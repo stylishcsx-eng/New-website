@@ -1,0 +1,118 @@
+{
+  "identity": {
+    "name": "E1",
+    "mission": "Create a top 1% tactical gaming hub that feels like a military-grade control center mixed with cyberpunk noir.",
+    "principles": [
+      "Fusion: Military Precision x Cyberpunk Glitch",
+      "Emotion: Adrenaline, Fear, Dominance",
+      "Content: Data is ammo. Display it with lethal clarity.",
+      "Contrast: Void Black vs. Laser Red"
+    ]
+  },
+  "typography": {
+    "primary_font": "Rajdhani",
+    "secondary_font": "JetBrains Mono",
+    "google_fonts_url": "https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Rajdhani:wght@500;600;700&display=swap",
+    "usage": {
+      "headings": "font-['Rajdhani'] uppercase tracking-wider font-bold",
+      "body": "font-['JetBrains_Mono']",
+      "ui_elements": "font-['JetBrains_Mono'] text-xs tracking-widest uppercase"
+    }
+  },
+  "colors": {
+    "palette": {
+      "background": "#050505",
+      "foreground": "#E5E5E5",
+      "card": "#0A0A0A",
+      "card_foreground": "#E5E5E5",
+      "popover": "#0A0A0A",
+      "popover_foreground": "#E5E5E5",
+      "primary": "#DC2626",
+      "primary_foreground": "#FFFFFF",
+      "secondary": "#10B981",
+      "secondary_foreground": "#000000",
+      "muted": "#171717",
+      "muted_foreground": "#737373",
+      "accent": "#262626",
+      "accent_foreground": "#E5E5E5",
+      "destructive": "#7F1D1D",
+      "destructive_foreground": "#E5E5E5",
+      "border": "#262626",
+      "input": "#262626",
+      "ring": "#DC2626"
+    },
+    "special_accents": {
+      "neon_red": "#FF003C",
+      "toxic_green": "#00FF9D",
+      "void_black": "#000000"
+    }
+  },
+  "visual_enhancers": {
+    "borders": "border border-red-900/20",
+    "shadows": "shadow-[0_0_20px_rgba(220,38,38,0.15)]",
+    "glassmorphism": "backdrop-blur-xl bg-black/80 border-white/5",
+    "textures": "bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20",
+    "animations": {
+      "glitch": "animate-pulse",
+      "scanline": "bg-gradient-to-b from-transparent via-red-900/10 to-transparent bg-[length:100%_4px]"
+    }
+  },
+  "layout": {
+    "grid_system": "Bento Grid Mode B (Control Room)",
+    "spacing": "Generous padding (p-8, p-12) to create a 'high-tech facility' feel.",
+    "container": "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
+  },
+  "components": {
+    "buttons": {
+      "style": "sharp-edged, rectangular",
+      "classes": "rounded-none border border-red-600/50 hover:bg-red-900/20 hover:border-red-500 transition-all duration-300 uppercase tracking-widest font-['Rajdhani']"
+    },
+    "cards": {
+      "style": "HUD Panel",
+      "classes": "bg-black/40 border border-white/10 backdrop-blur-md rounded-sm relative overflow-hidden group hover:border-red-500/30 transition-colors"
+    },
+    "inputs": {
+      "style": "Terminal Input",
+      "classes": "bg-black/50 border-white/10 focus:border-red-500 rounded-none font-['JetBrains_Mono']"
+    }
+  },
+  "images": {
+    "hero_background": {
+      "url": "https://images.unsplash.com/photo-1643245264500-e0dfd5078647?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "alt": "Cyberpunk City Night",
+      "usage": "Main landing page background with heavy dark overlay"
+    },
+    "about_section": {
+      "url": "https://images.unsplash.com/photo-1637594619238-3df530c954ed?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "alt": "Tactical Soldiers",
+      "usage": "Join/About section background"
+    },
+    "server_status_bg": {
+      "url": "https://images.unsplash.com/photo-1658713981078-cc13b54dd40c?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "alt": "Red Server Room",
+      "usage": "Background for the live server status widget"
+    },
+    "rankings_bg": {
+      "url": "https://images.unsplash.com/photo-1561344640-2453889cde5b?crop=entropy&cs=srgb&fm=jpg&q=85",
+      "alt": "Cyberpunk Building",
+      "usage": "Subtle texture for rankings/stats cards"
+    }
+  },
+  "instructions_to_main_agent": [
+    "1. INSTALL FONTS: Add the Google Fonts link to the <head> of index.html immediately.",
+    "2. CONFIGURE TAILWIND: Update tailwind.config.js to extend the font family with 'Rajdhani' and 'JetBrains Mono'.",
+    "3. CSS VARIABLES: Overwrite the :root and .dark variables in index.css with the provided color palette. FORCE DARK MODE by default.",
+    "4. SHADCN: When using Shadcn components, strip the 'rounded-md' classes. We want sharp, brutalist edges (rounded-none or rounded-sm).",
+    "5. SERVER STATUS: This is the crown jewel. Make it look like a heartbeat monitor. Use the 'server_status_bg' image with a red overlay.",
+    "6. BANLIST: Style this as a 'Criminal Record' database. Use monospaced font for IPs and SteamIDs.",
+    "7. RANKINGS: Top 3 players get special 'Wanted' poster styling.",
+    "8. ADMIN PANEL: Must feel like a 'Restricted Access' area. Use heavy red borders and 'Access Denied' aesthetics for non-admins."
+  ],
+  "universal_guidelines": [
+    "Do not use gradients for backgrounds, use solid colors or noise textures.",
+    "Use 'sonner' for all notifications (toasts).",
+    "Ensure all interactive elements have a hover state that changes border color or background opacity.",
+    "Use 'lucide-react' for icons. Pick sharp, geometric icons (e.g., 'Shield', 'Crosshair', 'Terminal').",
+    "Add 'data-testid' to all interactive elements."
+  ]
+}

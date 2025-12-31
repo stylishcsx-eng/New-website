@@ -1,0 +1,142 @@
+#!/bin/bash
+# ============================================
+# Auto Ban Sync for Advanced Bans Plugin
+# Watches BAN_HISTORY logs and syncs to website
+# ============================================
+
+# Configuration
+WEBSITE_URL="http://82.22.174.126:8085"
+SECRET="shadowzm-ban-secret-2024"
+LOG_DIR="/var/lib/pterodactyl/volumes/d968fb39-3234-47f5-9341-d3149d0c8739/cstrike/addons/amxmodx/logs"
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+NC='\033[0m'
+
+echo -e "${GREEN}=== shadowzm Auto Ban Sync ===${NC}"
+echo "Website: $WEBSITE_URL"
+echo "Log dir: $LOG_DIR"
+echo ""
+
+# Function to send ban to website
+send_ban() {
+    local player="$1"
+    local steamid="$2"
+    local reason="$3"
+    local admin="$4"
+    local duration="$5"
+    
+    echo -e "${YELLOW}[NEW BAN DETECTED]${NC}"
+    echo "  Player: $player"
+    echo "  SteamID: $steamid"
+    echo "  Reason: $reason"
+    echo "  Admin: $admin"
+    echo "  Duration: $duration"
+    
+    response=$(curl -s -X POST "$WEBSITE_URL/api/bans/webhook" \
+        -H "Content-Type: application/json" \
+        -d "{
+            \"secret\": \"$SECRET\",
+            \"player_nickname\": \"$player\",
+            \"steamid\": \"$steamid\",
+            \"reason\": \"$reason\",
+            \"admin_name\": \"$admin\",
+            \"duration\": \"$duration\"
+        }")
+    
+    if echo "$response" | grep -q "message"; then
+        echo -e "${GREEN}  ✓ Synced to website${NC}"
+    else
+        echo -e "${RED}  ✗ Failed: $response${NC}"
+    fi
+    echo ""
+}
+
+# Function to remove ban from website (when unbanned)
+remove_ban() {
+    local steamid="$1"
+    local player="$2"
+    
+    echo -e "${CYAN}[UNBAN DETECTED]${NC}"
+    echo "  Player: $player"
+    echo "  SteamID: $steamid"
+    
+    response=$(curl -s -X DELETE "$WEBSITE_URL/api/bans/webhook/$steamid?secret=$SECRET")
+    
+    if echo "$response" | grep -q "message"; then
+        echo -e "${GREEN}  ✓ Removed from website${NC}"
+    else
+        echo -e "${YELLOW}  Note: $response${NC}"
+    fi
+    echo ""
+}
+
+# Check if log directory exists
+if [ ! -d "$LOG_DIR" ]; then
+    echo -e "${RED}Error: Log directory not found: $LOG_DIR${NC}"
+    exit 1
+fi
+
+echo -e "${GREEN}Watching for ban events in BAN_HISTORY logs...${NC}"
+echo "(Press Ctrl+C to stop)"
+echo ""
+
+# Watch BAN_HISTORY log files
+tail -F "$LOG_DIR"/BAN_HISTORY_*.log 2>/dev/null | while read line; do
+    
+    # Check for new ban
+    # Format: L 12/29/2025 - 19:11:07: AdminName <ADMIN_STEAM> banned PlayerName <PLAYER_STEAM> || Reason: "reason" || Ban Length: duration
+    if echo "$line" | grep -q "banned.*||.*Reason:.*||.*Ban Length:"; then
+        
+        # Extract admin name (before <)
+        admin=$(echo "$line" | sed -n 's/.*: \([^<]*\) <[^>]*> banned.*/\1/p' | xargs)
+        
+        # Extract player name (after "banned " and before <)
+        player=$(echo "$line" | sed -n 's/.*banned \([^<]*\) <.*/\1/p' | xargs)
+        
+        # Extract player steamid (inside < > after "banned PlayerName")
+        steamid=$(echo "$line" | sed -n 's/.*banned [^<]* <\([^>]*\)>.*/\1/p')
+        
+        # Extract reason (inside quotes after "Reason:")
+        reason=$(echo "$line" | sed -n 's/.*Reason: "\([^"]*\)".*/\1/p')
+        
+        # Extract duration (after "Ban Length:")
+        duration=$(echo "$line" | sed -n 's/.*Ban Length: \(.*\)/\1/p')
+        
+        # If we got all the data, send it
+        if [ -n "$player" ] && [ -n "$steamid" ]; then
+            # Default values if empty
+            [ -z "$reason" ] && reason="Banned"
+            [ -z "$admin" ] && admin="Server"
+            [ -z "$duration" ] && duration="Permanent"
+            
+            send_ban "$player" "$steamid" "$reason" "$admin" "$duration"
+        fi
+    fi
+    
+    # Check for unban
+    # Format: ... unbanned PlayerName <STEAMID> ...
+    if echo "$line" | grep -q "unbanned"; then
+        player=$(echo "$line" | sed -n 's/.*unbanned \([^<]*\) <.*/\1/p' | xargs)
+        steamid=$(echo "$line" | sed -n 's/.*unbanned [^<]* <\([^>]*\)>.*/\1/p')
+        
+        if [ -n "$steamid" ]; then
+            remove_ban "$steamid" "$player"
+        fi
+    fi
+    
+    # Check for ban expiry
+    # Format: Ban time is up for: PlayerName [STEAMID]
+    if echo "$line" | grep -q "Ban time is up"; then
+        player=$(echo "$line" | sed -n 's/.*Ban time is up for: \([^[]*\) \[.*/\1/p' | xargs)
+        steamid=$(echo "$line" | sed -n 's/.*\[\([^\]]*\)\].*/\1/p')
+        
+        if [ -n "$steamid" ]; then
+            remove_ban "$steamid" "$player"
+        fi
+    fi
+    
+done
