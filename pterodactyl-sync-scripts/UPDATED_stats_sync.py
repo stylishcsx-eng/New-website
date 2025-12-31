@@ -15,7 +15,7 @@ WEBSITE_URL = "http://YOUR_VPS_IP"  # or http://yourdomain.com
 SECRET = "shadowzm-ban-secret-2024"
 
 # YOUR Pterodactyl volume path
-CSST ATS_FILE = "/var/lib/pterodactyl/volumes/d8109667-ac86-4f43-aeb3-5e84ed58df07/cstrike/addons/amxmodx/data/csstats.dat"
+CSSTATS_FILE = "/var/lib/pterodactyl/volumes/d8109667-ac86-4f43-aeb3-5e84ed58df07/cstrike/addons/amxmodx/data/csstats.dat"
 # =======================================
 
 def parse_csstats(filepath):
