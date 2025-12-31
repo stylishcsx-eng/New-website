@@ -61,20 +61,30 @@ export const Home = () => {
         <div className="absolute inset-0 bg-gradient-to-b from-background/50 via-background/80 to-background z-10" />
         
         <div className="relative z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-32">
-          <div className="flex items-center space-x-3 mb-6">
+          {/* Logo */}
+          <div className="flex justify-center mb-8 md:mb-12">
+            <img 
+              src="/shadowzm-logo.png" 
+              alt="ShadowZM Logo" 
+              className="w-32 h-32 md:w-48 md:h-48 object-contain animate-float drop-shadow-[0_0_30px_rgba(255,75,75,0.6)]"
+              data-testid="hero-logo"
+            />
+          </div>
+
+          <div className="flex items-center justify-center space-x-3 mb-6">
             <div className={`w-3 h-3 rounded-full ${serverStatus?.online ? 'bg-green-500 pulse-online' : 'bg-red-500'}`} />
             <span className="text-sm font-mono text-muted-foreground uppercase tracking-wider">
               {serverStatus?.online ? 'SERVER ONLINE' : 'SERVER OFFLINE'}
             </span>
           </div>
           
-          <h1 className="font-heading text-5xl sm:text-6xl md:text-7xl font-bold uppercase tracking-tight text-white mb-4" data-testid="hero-title">
+          <h1 className="font-heading text-5xl sm:text-6xl md:text-7xl font-bold uppercase tracking-tight text-white mb-4 text-center" data-testid="hero-title">
             SHADOWZM
           </h1>
-          <p className="text-xl md:text-2xl text-primary font-heading uppercase tracking-wider mb-6">
+          <p className="text-xl md:text-2xl text-primary font-heading uppercase tracking-wider mb-6 text-center">
             ZOMBIE REVERSE
           </p>
-          <p className="text-lg text-muted-foreground font-mono mb-8 max-w-2xl">
+          <p className="text-lg text-muted-foreground font-mono mb-8 max-w-2xl text-center mx-auto">
             {serverStatus?.server_ip || '82.22.174.126:27016'}
           </p>
           
