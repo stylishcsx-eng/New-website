@@ -1,53 +1,50 @@
-import { useEffect } from "react";
-import "@/App.css";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import axios from "axios";
-
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
-
-const Home = () => {
-  const helloWorldApi = async () => {
-    try {
-      const response = await axios.get(`${API}/`);
-      console.log(response.data.message);
-    } catch (e) {
-      console.error(e, `errored out requesting / api`);
-    }
-  };
-
-  useEffect(() => {
-    helloWorldApi();
-  }, []);
-
-  return (
-    <div>
-      <header className="App-header">
-        <a
-          className="App-link"
-          href="https://emergent.sh"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4" />
-        </a>
-        <p className="mt-5">Building something incredible ~!</p>
-      </header>
-    </div>
-  );
-};
+import '@/App.css';
+import '@/index.css';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
+import { Navigation } from './components/Navigation';
+import { ProtectedRoute } from './components/ProtectedRoute';
+import { Home } from './pages/Home';
+import { ServerStatus } from './pages/ServerStatus';
+import { Rankings } from './pages/Rankings';
+import { Banlist } from './pages/Banlist';
+import { Rules } from './pages/Rules';
+import { ApplyAdmin } from './pages/ApplyAdmin';
+import { Login } from './pages/Login';
+import { Register } from './pages/Register';
+import { AdminPanel } from './pages/AdminPanel';
+import { AdminLogin } from './pages/AdminLogin';
+import { Toaster } from './components/ui/sonner';
 
 function App() {
   return (
-    <div className="App">
+    <AuthProvider>
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Home />}>
-            <Route index element={<Home />} />
-          </Route>
-        </Routes>
+        <div className="App min-h-screen bg-background">
+          <Navigation />
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/server-status" element={<ServerStatus />} />
+            <Route path="/rankings" element={<Rankings />} />
+            <Route path="/banlist" element={<Banlist />} />
+            <Route path="/rules" element={<Rules />} />
+            <Route path="/apply-admin" element={<ApplyAdmin />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/admin-login" element={<AdminLogin />} />
+            <Route 
+              path="/admin" 
+              element={
+                <ProtectedRoute adminOnly={true}>
+                  <AdminPanel />
+                </ProtectedRoute>
+              } 
+            />
+          </Routes>
+          <Toaster position="top-right" theme="dark" />
+        </div>
       </BrowserRouter>
-    </div>
+    </AuthProvider>
   );
 }
 
