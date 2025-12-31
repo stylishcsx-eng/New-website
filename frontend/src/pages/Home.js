@@ -88,7 +88,7 @@ export const Home = () => {
             {serverStatus?.server_ip || '82.22.174.126:27016'}
           </p>
           
-          <div className="flex flex-wrap gap-4">
+          <div className="flex flex-wrap gap-4 justify-center">
             <Link
               to="/server-status"
               data-testid="btn-view-server"
