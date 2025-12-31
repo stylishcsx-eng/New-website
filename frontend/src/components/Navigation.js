@@ -33,9 +33,9 @@ export const Navigation = () => {
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-3 group" data-testid="nav-logo">
             <img 
-              src="/logo.png" 
+              src="/shadowzm-logo.png" 
               alt="ShadowZM Logo" 
-              className="w-12 h-12 object-contain group-hover:scale-105 transition-transform"
+              className="w-12 h-12 object-contain group-hover:scale-110 transition-transform drop-shadow-[0_0_15px_rgba(255,75,75,0.5)]"
             />
             <div className="hidden sm:block">
               <span className="font-heading text-xl font-bold uppercase tracking-wider text-white">ShadowZM</span>
