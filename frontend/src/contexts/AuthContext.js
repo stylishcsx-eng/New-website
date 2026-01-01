@@ -120,6 +120,13 @@ export const AuthProvider = ({ children }) => {
     setUnreadCount(0);
   };
 
+  // Handle Discord OAuth callback
+  const handleAuthCallback = (callbackToken) => {
+    localStorage.setItem('token', callbackToken);
+    axios.defaults.headers.common['Authorization'] = `Bearer ${callbackToken}`;
+    setToken(callbackToken);
+  };
+
   const isAdmin = user?.role === 'admin' || user?.role === 'owner';
   const isOwner = user?.role === 'owner';
 
