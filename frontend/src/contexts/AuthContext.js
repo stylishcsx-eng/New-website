@@ -21,20 +21,10 @@ export const AuthProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  useEffect(() => {
-    if (token) {
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      fetchUser();
-    } else {
-      setLoading(false);
-    }
-  }, [token]);
-
-  const fetchUser = async () => {
+  const fetchUser = useCallback(async () => {
     try {
       const response = await axios.get(`${API}/auth/me`);
       setUser(response.data);
-      // Fetch notifications for this user
       if (response.data.steamid || response.data.nickname) {
         fetchNotifications(response.data.steamid, response.data.nickname);
       }
@@ -44,7 +34,16 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (token) {
+      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      fetchUser();
+    } else {
+      setLoading(false);
+    }
+  }, [token, fetchUser]);
 
   const fetchNotifications = useCallback(async (steamid, nickname) => {
     try {
@@ -79,31 +78,21 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const login = async (email, password) => {
-    const response = await axios.post(`${API}/auth/login`, { email, password });
-    const { access_token, user: userData } = response.data;
-    localStorage.setItem('token', access_token);
-    axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
-    setToken(access_token);
-    setUser(userData);
-    if (userData.steamid || userData.nickname) {
-      fetchNotifications(userData.steamid, userData.nickname);
-    }
-    return userData;
+  // Discord login - redirect to Discord OAuth
+  const loginWithDiscord = () => {
+    window.location.href = `${API}/auth/discord`;
   };
 
+  // Handle OAuth callback token
+  const handleAuthCallback = (callbackToken) => {
+    localStorage.setItem('token', callbackToken);
+    axios.defaults.headers.common['Authorization'] = `Bearer ${callbackToken}`;
+    setToken(callbackToken);
+  };
+
+  // Admin login (keep for admin panel)
   const adminLogin = async (username, password) => {
     const response = await axios.post(`${API}/auth/admin-login`, { username, password });
-    const { access_token, user: userData } = response.data;
-    localStorage.setItem('token', access_token);
-    axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
-    setToken(access_token);
-    setUser(userData);
-    return userData;
-  };
-
-  const register = async (nickname, email, password, steamid) => {
-    const response = await axios.post(`${API}/auth/register`, { nickname, email, password, steamid });
     const { access_token, user: userData } = response.data;
     localStorage.setItem('token', access_token);
     axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
@@ -135,9 +124,9 @@ export const AuthProvider = ({ children }) => {
       user,
       token,
       loading,
-      login,
+      loginWithDiscord,
+      handleAuthCallback,
       adminLogin,
-      register,
       logout,
       isAdmin,
       isOwner,
