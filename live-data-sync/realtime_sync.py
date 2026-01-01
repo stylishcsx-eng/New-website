@@ -146,7 +146,7 @@ def parse_csstats(filepath):
 
 
 def parse_ban_logs(log_dir):
-    """Parse ban history logs"""
+    """Parse ban history logs - tracks order of events to get CURRENT ban status"""
     if not os.path.exists(log_dir):
         return []
     
@@ -154,8 +154,9 @@ def parse_ban_logs(log_dir):
     if not log_files:
         return []
     
-    all_bans = []
-    unbanned_steamids = set()
+    # Track the LATEST action for each player (ban or unban)
+    # Key: steamid, Value: {'action': 'ban'/'unban', 'data': ban_data or None}
+    player_status = {}
     
     for log_file in sorted(log_files):
         try:
@@ -163,36 +164,38 @@ def parse_ban_logs(log_dir):
                 for line in f:
                     line = line.strip()
                     
+                    # Check for unban (ban expired or manually unbanned)
                     if 'unbanned' in line or 'Ban time is up' in line:
                         unban_match = re.search(r'unbanned .+? <([^>]+)>', line)
                         if unban_match:
-                            unbanned_steamids.add(unban_match.group(1))
+                            steamid = unban_match.group(1)
+                            player_status[steamid] = {'action': 'unban', 'data': None}
+                        
                         expire_match = re.search(r'Ban time is up for: .+ \[([^\]]+)\]', line)
                         if expire_match:
-                            unbanned_steamids.add(expire_match.group(1))
+                            steamid = expire_match.group(1)
+                            player_status[steamid] = {'action': 'unban', 'data': None}
                     
+                    # Check for ban
                     elif 'banned' in line and '||' in line:
                         pattern = r'L (\d{2}/\d{2}/\d{4} - \d{2}:\d{2}:\d{2}): (.+?) <([^>]*)> banned (.+?) <([^>]+)> \|\| Reason: "([^"]*)" \|\| Ban Length: (.+)'
                         match = re.match(pattern, line)
                         if match:
                             timestamp_str, admin_name, admin_steam, player_name, player_steam, reason, duration = match.groups()
-                            all_bans.append({
+                            ban_data = {
                                 'timestamp': timestamp_str,
                                 'admin_name': admin_name.strip(),
                                 'player_nickname': player_name.strip(),
                                 'steamid': player_steam.strip(),
                                 'reason': reason.strip() if reason.strip() else "Banned",
                                 'duration': duration.strip()
-                            })
+                            }
+                            player_status[player_steam.strip()] = {'action': 'ban', 'data': ban_data}
         except:
             continue
     
-    latest_bans = {}
-    for ban in all_bans:
-        steamid = ban['steamid']
-        latest_bans[steamid] = ban
-    
-    active_bans = [v for k, v in latest_bans.items() if k not in unbanned_steamids]
+    # Get all players whose LATEST action was a ban
+    active_bans = [v['data'] for v in player_status.values() if v['action'] == 'ban' and v['data'] is not None]
     return active_bans
 
 
