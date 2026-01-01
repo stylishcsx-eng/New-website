@@ -145,6 +145,7 @@ export const AuthProvider = ({ children }) => {
       register,
       adminLogin,
       logout,
+      handleAuthCallback,
       isAdmin,
       isOwner,
       isAuthenticated: !!user,
