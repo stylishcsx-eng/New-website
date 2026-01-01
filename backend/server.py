@@ -319,7 +319,10 @@ async def init_default_team():
     count = await db.team_members.count_documents({})
     if count == 0:
         members = [
-            {"id": str(uuid.uuid4()), "name": "Stylish", "role": "Owner", "discord_id": None, "steamid": "STEAM_0:0:171538078", "avatar": None, "description": "Server Owner & Developer", "order": 1},
+            {"id": str(uuid.uuid4()), "name": "Stylish", "role": "Owner", "discord_id": None, "steamid": "STEAM_0:0:171538078", "avatar": "https://customer-assets.emergentagent.com/job_cs-server-sync/artifacts/dy6oo11y_ChatGPT%20Image%20Dec%2020%2C%202025%2C%2006_47_46%20PM.png", "description": "Server Founder & Developer", "order": 1},
+            {"id": str(uuid.uuid4()), "name": "Nico", "role": "Owner", "discord_id": None, "steamid": None, "avatar": None, "description": "Server Owner", "order": 2},
+            {"id": str(uuid.uuid4()), "name": "Angry.exe", "role": "Owner", "discord_id": None, "steamid": None, "avatar": None, "description": "Server Owner", "order": 3},
+            {"id": str(uuid.uuid4()), "name": "Pak", "role": "Owner", "discord_id": None, "steamid": None, "avatar": None, "description": "Server Owner", "order": 4},
         ]
         await db.team_members.insert_many(members)
         logging.info("Default team members created")
