@@ -10,7 +10,7 @@ import requests
 import os
 
 # ============ CONFIGURATION ============
-WEBSITE_URL = "http://82.22.174.126:8085"
+WEBSITE_URL = "http://shadowzm.xyz"
 SECRET = "shadowzm-ban-secret-2024"
 CSSTATS_FILE = "/var/lib/pterodactyl/volumes/d968fb39-3234-47f5-9341-d3149d0c8739/cstrike/addons/amxmodx/data/csstats.dat"
 # =======================================
