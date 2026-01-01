@@ -1,0 +1,18 @@
+[Unit]
+Description=ShadowZM CS 1.6 Data Sync Service
+After=network.target mongod.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root
+ExecStart=/usr/bin/python3 /root/simple_sync.py --continuous
+Restart=always
+RestartSec=10
+
+# Logging
+StandardOutput=append:/var/log/shadowzm-sync.log
+StandardError=append:/var/log/shadowzm-sync.log
+
+[Install]
+WantedBy=multi-user.target
