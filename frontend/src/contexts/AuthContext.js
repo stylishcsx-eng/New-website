@@ -78,16 +78,26 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Discord login - redirect to Discord OAuth
-  const loginWithDiscord = () => {
-    window.location.href = `${API}/auth/discord`;
+  // Login with email and password
+  const login = async (email, password) => {
+    const response = await axios.post(`${API}/auth/login`, { email, password });
+    const { access_token, user: userData } = response.data;
+    localStorage.setItem('token', access_token);
+    axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
+    setToken(access_token);
+    setUser(userData);
+    return userData;
   };
 
-  // Handle OAuth callback token
-  const handleAuthCallback = (callbackToken) => {
-    localStorage.setItem('token', callbackToken);
-    axios.defaults.headers.common['Authorization'] = `Bearer ${callbackToken}`;
-    setToken(callbackToken);
+  // Register with email, password, steamid
+  const register = async (nickname, email, password, steamid) => {
+    const response = await axios.post(`${API}/auth/register`, { nickname, email, password, steamid });
+    const { access_token, user: userData } = response.data;
+    localStorage.setItem('token', access_token);
+    axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
+    setToken(access_token);
+    setUser(userData);
+    return userData;
   };
 
   // Admin login (keep for admin panel)
@@ -124,8 +134,8 @@ export const AuthProvider = ({ children }) => {
       user,
       token,
       loading,
-      loginWithDiscord,
-      handleAuthCallback,
+      login,
+      register,
       adminLogin,
       logout,
       isAdmin,
