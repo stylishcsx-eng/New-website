@@ -25,8 +25,8 @@ CS_SERVER_IP = "82.22.174.126"
 CS_SERVER_PORT = 27016
 
 # File Paths (on Pterodactyl server or wherever CS files are)
-CSSTATS_FILE = "/var/lib/pterodactyl/volumes/d8109667-ac86-4f43-aeb3-5e84ed58df07/cstrike/addons/amxmodx/data/csstats.dat"
-BAN_LOGS_DIR = "/var/lib/pterodactyl/volumes/d8109667-ac86-4f43-aeb3-5e84ed58df07/cstrike/addons/amxmodx/logs"
+CSSTATS_FILE = "/var/lib/pterodactyl/volumes/7cc6beed-d649-427e-b172-3ae51a81a1b9/cstrike/addons/amxmodx/data/csstats.dat"
+BAN_LOGS_DIR = "/var/lib/pterodactyl/volumes/7cc6beed-d649-427e-b172-3ae51a81a1b9/cstrike/addons/amxmodx/logs"
 
 # Sync Settings
 SYNC_INTERVAL = 60  # Seconds between syncs (60 = every minute)
