@@ -183,13 +183,11 @@ class ForumCategoryResponse(BaseModel):
     created_at: str
 
 class ForumTopicCreate(BaseModel):
-    category_id: str
     title: str
     content: str
 
 class ForumTopicResponse(BaseModel):
     id: str
-    category_id: str
     title: str
     content: str
     author_id: str
