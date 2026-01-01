@@ -831,13 +831,8 @@ async def get_forum_topic(topic_id: str):
 
 @api_router.post("/forum/topics", response_model=ForumTopicResponse)
 async def create_forum_topic(data: ForumTopicCreate, user = Depends(require_auth)):
-    category = await db.forum_categories.find_one({"id": data.category_id})
-    if not category:
-        raise HTTPException(status_code=404, detail="Category not found")
-    
     topic = {
         "id": str(uuid.uuid4()),
-        "category_id": data.category_id,
         "title": data.title,
         "content": data.content,
         "author_id": user["id"],
@@ -850,7 +845,6 @@ async def create_forum_topic(data: ForumTopicCreate, user = Depends(require_auth
         "last_reply_at": None
     }
     await db.forum_topics.insert_one(topic)
-    await db.forum_categories.update_one({"id": data.category_id}, {"$inc": {"topic_count": 1}})
     return topic
 
 @api_router.delete("/forum/topics/{topic_id}")
@@ -865,8 +859,8 @@ async def delete_forum_topic(topic_id: str, user = Depends(require_auth)):
     
     await db.forum_replies.delete_many({"topic_id": topic_id})
     await db.forum_topics.delete_one({"id": topic_id})
-    await db.forum_categories.update_one({"id": topic["category_id"]}, {"$inc": {"topic_count": -1}})
     return {"message": "Topic deleted"}
+
 
 @api_router.patch("/forum/topics/{topic_id}/pin")
 async def toggle_pin_topic(topic_id: str, user = Depends(require_admin)):
