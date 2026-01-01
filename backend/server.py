@@ -462,6 +462,47 @@ async def discord_callback(code: str = Query(...)):
 async def get_me(user = Depends(require_auth)):
     return {k: v for k, v in user.items() if k != "password"}
 
+# Email/Password Login
+@api_router.post("/auth/login", response_model=TokenResponse)
+async def login(data: UserLogin):
+    user = await db.users.find_one({"email": data.email}, {"_id": 0})
+    if not user or not user.get("password") or not verify_password(data.password, user["password"]):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    token = create_token({"sub": user["id"], "role": user.get("role", "player")})
+    user_response = {k: v for k, v in user.items() if k != "password"}
+    return {"access_token": token, "user": user_response}
+
+# Email/Password Register
+@api_router.post("/auth/register", response_model=TokenResponse)
+async def register(data: UserCreate):
+    # Check if email already exists
+    existing = await db.users.find_one({"email": data.email})
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # Check if nickname already exists
+    existing_nick = await db.users.find_one({"nickname": data.nickname})
+    if existing_nick:
+        raise HTTPException(status_code=400, detail="Nickname already taken")
+    
+    user = {
+        "id": str(uuid.uuid4()),
+        "nickname": data.nickname,
+        "email": data.email,
+        "password": hash_password(data.password),
+        "steamid": data.steamid,
+        "role": "player",
+        "discord_id": None,
+        "discord_avatar": None,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.users.insert_one(user)
+    
+    token = create_token({"sub": user["id"], "role": user["role"]})
+    user_response = {k: v for k, v in user.items() if k != "password"}
+    return {"access_token": token, "user": user_response}
+
 # Keep admin login for backend access
 @api_router.post("/auth/admin-login", response_model=TokenResponse)
 async def admin_login(data: AdminLogin):
