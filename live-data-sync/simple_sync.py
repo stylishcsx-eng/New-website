@@ -396,7 +396,7 @@ def run_continuous():
     
     # Initial connection test
     client, db = test_mongodb_connection()
-    if not db:
+    if db is None:
         print("\n[FAILED] Cannot proceed without MongoDB connection")
         return
     client.close()
