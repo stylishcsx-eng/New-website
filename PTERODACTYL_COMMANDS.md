@@ -3,7 +3,7 @@
 ## IMPORTANT: Two Different Servers!
 
 ### 🌐 Emergent Website Server (Where your website runs)
-- **Location:** https://banlist-portal.preview.emergentagent.com
+- **Location:** https://cs-server-sync.preview.emergentagent.com
 - **You DON'T need PuTTY** - website has hot-reload, updates automatically
 - **Managed by Emergent** - restarts happen automatically
 
@@ -57,7 +57,7 @@ tail -f /tmp/bans_sync.log
 
 ```bash
 # Test if website API is reachable from your server
-curl -X POST "https://banlist-portal.preview.emergentagent.com/api/players/webhook" \
+curl -X POST "https://cs-server-sync.preview.emergentagent.com/api/players/webhook" \
   -H "Content-Type: application/json" \
   -d '{"secret":"shadowzm-ban-secret-2024","nickname":"TestPlayer","steamid":"STEAM_0:1:123456","kills":100,"deaths":50,"headshots":30}'
 
@@ -70,14 +70,14 @@ curl -X POST "https://banlist-portal.preview.emergentagent.com/api/players/webho
 
 **stats_sync.py:**
 ```python
-WEBSITE_URL = "https://banlist-portal.preview.emergentagent.com"
+WEBSITE_URL = "https://cs-server-sync.preview.emergentagent.com"
 SECRET = "shadowzm-ban-secret-2024"
 CSSTATS_FILE = "/var/lib/pterodactyl/volumes/d968fb39-3234-47f5-9341-d3149d0c8739/cstrike/addons/amxmodx/data/csstats.dat"
 ```
 
 **import_bans.py:**
 ```python
-WEBSITE_URL = "https://banlist-portal.preview.emergentagent.com"
+WEBSITE_URL = "https://cs-server-sync.preview.emergentagent.com"
 SECRET = "shadowzm-ban-secret-2024"
 LOG_DIR = "/var/lib/pterodactyl/volumes/d968fb39-3234-47f5-9341-d3149d0c8739/cstrike/addons/amxmodx/logs"
 ```
@@ -161,7 +161,7 @@ python3 -u stats_sync.py
 |------|-------|---------|
 | **Sync player stats** | Pterodactyl (PuTTY) | `python3 stats_sync.py` |
 | **Sync bans** | Pterodactyl (PuTTY) | `python3 import_bans.py` |
-| **View website** | Browser | Open: https://banlist-portal.preview.emergentagent.com |
+| **View website** | Browser | Open: https://cs-server-sync.preview.emergentagent.com |
 | **Website changes** | Automatic | Hot reload - no commands needed! |
 | **Check CS server** | Browser/Steam | connect 82.22.174.126:27016 |
 

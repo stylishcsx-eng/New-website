@@ -10,7 +10,7 @@
 // ============ CONFIGURATION ============
 $config = [
     // Your website URL
-    'website_url' => 'https://cs-server-hub-1.preview.emergentagent.com',
+    'website_url' => 'https://cs-server-sync.preview.emergentagent.com',
     
     // Secret key (must match the website)
     'secret' => 'shadowzm-ban-secret-2024',

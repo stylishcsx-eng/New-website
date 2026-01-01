@@ -7,7 +7,7 @@ from datetime import datetime
 import time
 
 class CS16ServerHubTester:
-    def __init__(self, base_url="https://cs-server-hub-1.preview.emergentagent.com"):
+    def __init__(self, base_url="https://cs-server-sync.preview.emergentagent.com"):
         self.base_url = base_url
         self.api_url = f"{base_url}/api"
         self.token = None

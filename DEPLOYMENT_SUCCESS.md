@@ -39,7 +39,7 @@ You mentioned you have the sync scripts running on your Pterodactyl server. Make
 #### 1. **stats_sync.py** - For Player Rankings
 ```python
 # Configuration in the script:
-WEBSITE_URL = "https://banlist-portal.preview.emergentagent.com"
+WEBSITE_URL = "https://cs-server-sync.preview.emergentagent.com"
 SECRET = "shadowzm-ban-secret-2024"
 ```
 
@@ -47,7 +47,7 @@ SECRET = "shadowzm-ban-secret-2024"
 
 **Test Command** (run on your Pterodactyl server):
 ```bash
-curl -X POST "https://banlist-portal.preview.emergentagent.com/api/players/webhook" \
+curl -X POST "https://cs-server-sync.preview.emergentagent.com/api/players/webhook" \
   -H "Content-Type: application/json" \
   -d '{"secret":"shadowzm-ban-secret-2024","nickname":"TestPlayer","steamid":"STEAM_0:1:123456","kills":100,"deaths":50,"headshots":30}'
 ```
@@ -55,7 +55,7 @@ curl -X POST "https://banlist-portal.preview.emergentagent.com/api/players/webho
 #### 2. **import_bans.py** - For Banlist
 ```python
 # Configuration in the script:
-WEBSITE_URL = "https://banlist-portal.preview.emergentagent.com"
+WEBSITE_URL = "https://cs-server-sync.preview.emergentagent.com"
 SECRET = "shadowzm-ban-secret-2024"
 ```
 
@@ -63,7 +63,7 @@ SECRET = "shadowzm-ban-secret-2024"
 
 **Test Command** (run on your Pterodactyl server):
 ```bash
-curl -X POST "https://banlist-portal.preview.emergentagent.com/api/bans/webhook" \
+curl -X POST "https://cs-server-sync.preview.emergentagent.com/api/bans/webhook" \
   -H "Content-Type: application/json" \
   -d '{"secret":"shadowzm-ban-secret-2024","player_nickname":"BadPlayer","steamid":"STEAM_0:1:999999","reason":"Cheating","admin_name":"Admin","duration":"Permanent"}'
 ```
@@ -75,7 +75,7 @@ curl -X POST "https://banlist-portal.preview.emergentagent.com/api/bans/webhook"
 - Email: `owner@shadowzm.com`
 - Password: `Itachi1849`
 
-Access the admin panel at: `https://banlist-portal.preview.emergentagent.com/admin-login`
+Access the admin panel at: `https://cs-server-sync.preview.emergentagent.com/admin-login`
 
 ### 🔧 Backend Configuration:
 
@@ -99,7 +99,7 @@ CS_SERVER_NAME = "ShadowZM : Zombie Reverse"
 
 1. **Update Sync Scripts on Your Pterodactyl Server**:
    - Update `WEBSITE_URL` in both `stats_sync.py` and `import_bans.py` to:
-     `https://banlist-portal.preview.emergentagent.com`
+     `https://cs-server-sync.preview.emergentagent.com`
    
 2. **Run the Scripts**:
    ```bash
