@@ -40,8 +40,8 @@ sudo apt install -y nginx
 ## 📁 Step 2: Create Directory in /var/www (Proper Location!)
 
 ```bash
-# Create directory in standard web location
-sudo mkdir -p /var/www/shadowzm
+sudo mkdir -p /var/www/shadowzm# Create directory in standard web location
+
 cd /var/www/shadowzm
 
 # Create subdirectories
