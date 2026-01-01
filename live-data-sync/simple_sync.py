@@ -354,7 +354,7 @@ def run_sync_once():
     
     # Step 1: Connect to MongoDB
     client, db = test_mongodb_connection()
-    if not db:
+    if db is None:
         print("\n[FAILED] Cannot proceed without MongoDB connection")
         return False
     
