@@ -2,6 +2,7 @@
 """
 ShadowZM Complete Data Sync Script
 Syncs player stats from csstats.dat and bans from BAN_HISTORY logs to MongoDB
+KEEPS expired bans (marks them as expired instead of deleting)
 """
 
 import struct
@@ -10,7 +11,7 @@ import re
 import os
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pymongo import MongoClient
 
 # ============================================================
@@ -36,6 +37,57 @@ def get_db():
     except Exception as e:
         print(f"[ERROR] MongoDB connection failed: {e}")
         return None, None
+
+
+def parse_duration_to_minutes(duration_str):
+    """Convert duration string to minutes"""
+    if not duration_str:
+        return None
+    
+    duration_lower = duration_str.lower()
+    
+    if 'permanent' in duration_lower:
+        return None  # Permanent = no expiry
+    
+    # Parse "X minutes", "X hours", "X days", etc.
+    match = re.search(r'(\d+)\s*(minute|hour|day|week|month|year)', duration_lower)
+    if match:
+        value = int(match.group(1))
+        unit = match.group(2)
+        
+        if 'minute' in unit:
+            return value
+        elif 'hour' in unit:
+            return value * 60
+        elif 'day' in unit:
+            return value * 60 * 24
+        elif 'week' in unit:
+            return value * 60 * 24 * 7
+        elif 'month' in unit:
+            return value * 60 * 24 * 30
+        elif 'year' in unit:
+            return value * 60 * 24 * 365
+    
+    # Try just number (assume minutes)
+    try:
+        return int(duration_str)
+    except:
+        return None
+
+
+def calculate_expiry(ban_date_str, duration_str):
+    """Calculate expiry datetime from ban date and duration"""
+    minutes = parse_duration_to_minutes(duration_str)
+    if minutes is None:
+        return None  # Permanent
+    
+    try:
+        # Parse the ban date
+        ban_date = datetime.fromisoformat(ban_date_str.replace('Z', '+00:00'))
+        expiry = ban_date + timedelta(minutes=minutes)
+        return expiry.isoformat()
+    except:
+        return None
 
 
 def parse_csstats(filepath):
@@ -119,7 +171,7 @@ def parse_csstats(filepath):
 
 
 def parse_ban_logs(log_dir):
-    """Parse BAN_HISTORY log files"""
+    """Parse BAN_HISTORY log files - keeps ALL bans including expired ones"""
     if not os.path.exists(log_dir):
         print(f"[WARN] Ban logs dir not found: {log_dir}")
         return []
@@ -128,8 +180,9 @@ def parse_ban_logs(log_dir):
     if not log_files:
         return []
     
-    # Track latest action per player
-    player_status = {}
+    # Track all ban events
+    all_bans = {}  # steamid -> list of ban events
+    unban_events = {}  # steamid -> list of unban timestamps
     
     for log_file in sorted(log_files):
         try:
@@ -137,15 +190,25 @@ def parse_ban_logs(log_dir):
                 for line in f:
                     line = line.strip()
                     
-                    # Check for unban
+                    # Check for unban (ban expired)
                     if 'unbanned' in line or 'Ban time is up' in line:
+                        # Extract timestamp
+                        time_match = re.search(r'L (\d{2}/\d{2}/\d{4} - \d{2}:\d{2}:\d{2})', line)
+                        timestamp = time_match.group(1) if time_match else None
+                        
                         unban_match = re.search(r'unbanned .+? <([^>]+)>', line)
                         if unban_match:
-                            player_status[unban_match.group(1)] = {'action': 'unban'}
+                            steamid = unban_match.group(1)
+                            if steamid not in unban_events:
+                                unban_events[steamid] = []
+                            unban_events[steamid].append(timestamp)
                         
                         expire_match = re.search(r'Ban time is up for: .+ \[([^\]]+)\]', line)
                         if expire_match:
-                            player_status[expire_match.group(1)] = {'action': 'unban'}
+                            steamid = expire_match.group(1)
+                            if steamid not in unban_events:
+                                unban_events[steamid] = []
+                            unban_events[steamid].append(timestamp)
                     
                     # Check for ban
                     elif 'banned' in line and '||' in line:
@@ -153,24 +216,69 @@ def parse_ban_logs(log_dir):
                         match = re.match(pattern, line)
                         if match:
                             timestamp, admin, _, player, steamid, reason, duration = match.groups()
-                            player_status[steamid.strip()] = {
-                                'action': 'ban',
-                                'data': {
-                                    'id': f"{steamid.strip()}_{hash(timestamp)}",
-                                    'player_nickname': player.strip(),
-                                    'steamid': steamid.strip(),
-                                    'ip': 'Hidden',
-                                    'reason': reason.strip() or 'Banned',
-                                    'admin_name': admin.strip(),
-                                    'duration': duration.strip(),
-                                    'ban_date': datetime.now(timezone.utc).isoformat()
-                                }
+                            
+                            # Parse timestamp to ISO format
+                            try:
+                                dt = datetime.strptime(timestamp, '%m/%d/%Y - %H:%M:%S')
+                                dt = dt.replace(tzinfo=timezone.utc)
+                                ban_date_iso = dt.isoformat()
+                            except:
+                                ban_date_iso = datetime.now(timezone.utc).isoformat()
+                            
+                            ban_data = {
+                                'id': f"{steamid.strip()}_{hash(timestamp)}",
+                                'player_nickname': player.strip(),
+                                'steamid': steamid.strip(),
+                                'ip': 'hidden',
+                                'reason': reason.strip() or 'No reason provided',
+                                'admin_name': admin.strip(),
+                                'duration': duration.strip(),
+                                'ban_date': ban_date_iso,
+                                'source': 'server',
+                                'is_expired': False,
+                                'expires_at': None
                             }
+                            
+                            # Calculate expiry
+                            expires_at = calculate_expiry(ban_date_iso, duration.strip())
+                            ban_data['expires_at'] = expires_at
+                            
+                            # Check if already expired
+                            if expires_at:
+                                try:
+                                    expiry_dt = datetime.fromisoformat(expires_at.replace('Z', '+00:00'))
+                                    if expiry_dt < datetime.now(timezone.utc):
+                                        ban_data['is_expired'] = True
+                                except:
+                                    pass
+                            
+                            if steamid.strip() not in all_bans:
+                                all_bans[steamid.strip()] = []
+                            all_bans[steamid.strip()].append(ban_data)
         except Exception as e:
             print(f"[ERROR] Failed to read {log_file}: {e}")
     
-    # Return only active bans
-    return [v['data'] for v in player_status.values() if v['action'] == 'ban']
+    # Process bans - mark expired ones based on unban events
+    final_bans = []
+    for steamid, bans in all_bans.items():
+        for ban in bans:
+            # Check if this ban was unbanned
+            if steamid in unban_events:
+                # If there's an unban after this ban, mark as expired
+                for unban_time in unban_events[steamid]:
+                    if unban_time and ban.get('ban_date'):
+                        try:
+                            unban_dt = datetime.strptime(unban_time, '%m/%d/%Y - %H:%M:%S')
+                            ban_dt = datetime.fromisoformat(ban['ban_date'].replace('Z', '+00:00')).replace(tzinfo=None)
+                            if unban_dt > ban_dt:
+                                ban['is_expired'] = True
+                                break
+                        except:
+                            pass
+            
+            final_bans.append(ban)
+    
+    return final_bans
 
 
 def sync_players(db, players):
@@ -191,19 +299,24 @@ def sync_players(db, players):
 
 
 def sync_bans(db, bans):
-    """Sync bans to MongoDB"""
-    db.bans.delete_many({})
-    
+    """Sync bans to MongoDB - UPSERT to keep existing bans"""
     if not bans:
         return 0
     
+    synced = 0
     for ban in bans:
         try:
-            db.bans.insert_one(ban)
+            # Upsert - update if exists, insert if not
+            db.bans.update_one(
+                {'id': ban['id']},
+                {'$set': ban},
+                upsert=True
+            )
+            synced += 1
         except Exception as e:
-            print(f"[ERROR] Failed to insert ban: {e}")
+            print(f"[ERROR] Failed to sync ban: {e}")
     
-    return len(bans)
+    return synced
 
 
 def run_sync_once():
@@ -220,7 +333,9 @@ def run_sync_once():
     
     bans = parse_ban_logs(BAN_LOGS_DIR)
     b_count = sync_bans(db, bans)
-    print(f"  ✓ Synced {b_count} bans")
+    active_bans = len([b for b in bans if not b.get('is_expired')])
+    expired_bans = len([b for b in bans if b.get('is_expired')])
+    print(f"  ✓ Synced {b_count} bans ({active_bans} active, {expired_bans} expired)")
     
     client.close()
     return True
