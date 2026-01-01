@@ -1,5 +1,6 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, status
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, status, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.responses import RedirectResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -14,6 +15,7 @@ import jwt
 from passlib.context import CryptContext
 import a2s
 import asyncio
+import httpx
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -37,6 +39,12 @@ CS_SERVER_NAME = "ShadowZM : Zombie Reverse"
 
 # Webhook secret for ban sync
 BAN_WEBHOOK_SECRET = os.environ.get('BAN_WEBHOOK_SECRET', 'shadowzm-ban-secret-2024')
+
+# Discord OAuth Config
+DISCORD_CLIENT_ID = os.environ.get('DISCORD_CLIENT_ID', '1453754197760675933')
+DISCORD_CLIENT_SECRET = os.environ.get('DISCORD_CLIENT_SECRET', '5eiS6-KAQODqhAWiLliO3oha-PnBidbK')
+DISCORD_REDIRECT_URI = os.environ.get('DISCORD_REDIRECT_URI', 'https://shadowzm.xyz/api/auth/discord/callback')
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'https://shadowzm.xyz')
 
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
@@ -64,6 +72,8 @@ class UserResponse(BaseModel):
     steamid: Optional[str] = None
     role: str
     created_at: str
+    discord_id: Optional[str] = None
+    discord_avatar: Optional[str] = None
 
 class TokenResponse(BaseModel):
     access_token: str
@@ -158,6 +168,81 @@ class CreateAdminUser(BaseModel):
     password: str
     steamid: Optional[str] = None
 
+# Forum Models
+class ForumCategoryCreate(BaseModel):
+    name: str
+    description: str
+    icon: Optional[str] = "MessageSquare"
+
+class ForumCategoryResponse(BaseModel):
+    id: str
+    name: str
+    description: str
+    icon: str
+    topic_count: int
+    created_at: str
+
+class ForumTopicCreate(BaseModel):
+    category_id: str
+    title: str
+    content: str
+
+class ForumTopicResponse(BaseModel):
+    id: str
+    category_id: str
+    title: str
+    content: str
+    author_id: str
+    author_name: str
+    author_avatar: Optional[str] = None
+    reply_count: int
+    is_pinned: bool
+    is_locked: bool
+    created_at: str
+    last_reply_at: Optional[str] = None
+
+class ForumReplyCreate(BaseModel):
+    topic_id: str
+    content: str
+
+class ForumReplyResponse(BaseModel):
+    id: str
+    topic_id: str
+    content: str
+    author_id: str
+    author_name: str
+    author_avatar: Optional[str] = None
+    created_at: str
+
+# Team Models
+class TeamMemberCreate(BaseModel):
+    name: str
+    role: str
+    discord_id: Optional[str] = None
+    steamid: Optional[str] = None
+    avatar: Optional[str] = None
+    description: Optional[str] = None
+    order: int = 0
+
+class TeamMemberResponse(BaseModel):
+    id: str
+    name: str
+    role: str
+    discord_id: Optional[str] = None
+    steamid: Optional[str] = None
+    avatar: Optional[str] = None
+    description: Optional[str] = None
+    order: int
+
+class TeamMemberUpdate(BaseModel):
+    name: Optional[str] = None
+    role: Optional[str] = None
+    discord_id: Optional[str] = None
+    steamid: Optional[str] = None
+    avatar: Optional[str] = None
+    description: Optional[str] = None
+    order: Optional[int] = None
+
 # ==================== AUTH HELPERS ====================
 
 def hash_password(password: str) -> str:
@@ -200,7 +285,7 @@ async def require_owner(user = Depends(require_auth)):
         raise HTTPException(status_code=403, detail="Owner access required")
     return user
 
-# ==================== INIT DEFAULT OWNER ====================
+# ==================== INIT DEFAULT DATA ====================
 
 async def init_default_admin():
     owner = await db.users.find_one({"role": "owner"})
@@ -212,10 +297,32 @@ async def init_default_admin():
             "password": hash_password("Itachi1849"),
             "steamid": "STEAM_0:0:000000",
             "role": "owner",
+            "discord_id": None,
+            "discord_avatar": None,
             "created_at": datetime.now(timezone.utc).isoformat()
         }
         await db.users.insert_one(owner_user)
         logging.info("Default owner created: Stylish")
+
+async def init_default_forum_categories():
+    count = await db.forum_categories.count_documents({})
+    if count == 0:
+        categories = [
+            {"id": str(uuid.uuid4()), "name": "General", "description": "General discussion about the server", "icon": "MessageSquare", "topic_count": 0, "created_at": datetime.now(timezone.utc).isoformat()},
+            {"id": str(uuid.uuid4()), "name": "Support", "description": "Need help? Ask here!", "icon": "HelpCircle", "topic_count": 0, "created_at": datetime.now(timezone.utc).isoformat()},
+            {"id": str(uuid.uuid4()), "name": "Off-Topic", "description": "Talk about anything!", "icon": "Coffee", "topic_count": 0, "created_at": datetime.now(timezone.utc).isoformat()},
+        ]
+        await db.forum_categories.insert_many(categories)
+        logging.info("Default forum categories created")
+
+async def init_default_team():
+    count = await db.team_members.count_documents({})
+    if count == 0:
+        members = [
+            {"id": str(uuid.uuid4()), "name": "Stylish", "role": "Owner", "discord_id": None, "steamid": "STEAM_0:0:171538078", "avatar": None, "description": "Server Owner & Developer", "order": 1},
+        ]
+        await db.team_members.insert_many(members)
+        logging.info("Default team members created")
 
 # ==================== SERVER STATUS ====================
 
@@ -252,39 +359,107 @@ async def query_cs_server():
             "players": []
         }
 
-# ==================== AUTH ROUTES ====================
+# ==================== DISCORD OAUTH ROUTES ====================
 
-@api_router.post("/auth/register", response_model=TokenResponse)
-async def register(data: UserCreate):
-    existing = await db.users.find_one({"email": data.email})
-    if existing:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    
-    user = {
-        "id": str(uuid.uuid4()),
-        "nickname": data.nickname,
-        "email": data.email,
-        "password": hash_password(data.password),
-        "steamid": data.steamid,
-        "role": "player",
-        "created_at": datetime.now(timezone.utc).isoformat()
-    }
-    await db.users.insert_one(user)
-    
-    token = create_token({"sub": user["id"], "role": user["role"]})
-    user_response = {k: v for k, v in user.items() if k != "password"}
-    return {"access_token": token, "user": user_response}
+@api_router.get("/auth/discord")
+async def discord_login():
+    """Redirect to Discord OAuth"""
+    discord_auth_url = (
+        f"https://discord.com/api/oauth2/authorize"
+        f"?client_id={DISCORD_CLIENT_ID}"
+        f"&redirect_uri={DISCORD_REDIRECT_URI}"
+        f"&response_type=code"
+        f"&scope=identify%20email"
+    )
+    return RedirectResponse(url=discord_auth_url)
 
-@api_router.post("/auth/login", response_model=TokenResponse)
-async def login(data: UserLogin):
-    user = await db.users.find_one({"email": data.email}, {"_id": 0})
-    if not user or not verify_password(data.password, user["password"]):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    
-    token = create_token({"sub": user["id"], "role": user["role"]})
-    user_response = {k: v for k, v in user.items() if k != "password"}
-    return {"access_token": token, "user": user_response}
+@api_router.get("/auth/discord/callback")
+async def discord_callback(code: str = Query(...)):
+    """Handle Discord OAuth callback"""
+    try:
+        # Exchange code for token
+        async with httpx.AsyncClient() as client_http:
+            token_response = await client_http.post(
+                "https://discord.com/api/oauth2/token",
+                data={
+                    "client_id": DISCORD_CLIENT_ID,
+                    "client_secret": DISCORD_CLIENT_SECRET,
+                    "grant_type": "authorization_code",
+                    "code": code,
+                    "redirect_uri": DISCORD_REDIRECT_URI,
+                },
+                headers={"Content-Type": "application/x-www-form-urlencoded"}
+            )
+            
+            if token_response.status_code != 200:
+                logging.error(f"Discord token error: {token_response.text}")
+                return RedirectResponse(url=f"{FRONTEND_URL}/login?error=discord_auth_failed")
+            
+            token_data = token_response.json()
+            access_token = token_data["access_token"]
+            
+            # Get user info from Discord
+            user_response = await client_http.get(
+                "https://discord.com/api/users/@me",
+                headers={"Authorization": f"Bearer {access_token}"}
+            )
+            
+            if user_response.status_code != 200:
+                logging.error(f"Discord user error: {user_response.text}")
+                return RedirectResponse(url=f"{FRONTEND_URL}/login?error=discord_user_failed")
+            
+            discord_user = user_response.json()
+            discord_id = discord_user["id"]
+            discord_username = discord_user["username"]
+            discord_email = discord_user.get("email", f"{discord_id}@discord.user")
+            discord_avatar = None
+            if discord_user.get("avatar"):
+                discord_avatar = f"https://cdn.discordapp.com/avatars/{discord_id}/{discord_user['avatar']}.png"
+            
+            # Check if user exists
+            existing_user = await db.users.find_one({"discord_id": discord_id})
+            
+            if existing_user:
+                # Update user info
+                await db.users.update_one(
+                    {"discord_id": discord_id},
+                    {"$set": {
+                        "nickname": discord_username,
+                        "discord_avatar": discord_avatar,
+                        "email": discord_email
+                    }}
+                )
+                user = existing_user
+            else:
+                # Create new user
+                user = {
+                    "id": str(uuid.uuid4()),
+                    "nickname": discord_username,
+                    "email": discord_email,
+                    "password": None,
+                    "steamid": None,
+                    "role": "player",
+                    "discord_id": discord_id,
+                    "discord_avatar": discord_avatar,
+                    "created_at": datetime.now(timezone.utc).isoformat()
+                }
+                await db.users.insert_one(user)
+            
+            # Create JWT token
+            jwt_token = create_token({"sub": user["id"], "role": user.get("role", "player")})
+            
+            # Redirect to frontend with token
+            return RedirectResponse(url=f"{FRONTEND_URL}/auth/callback?token={jwt_token}")
+            
+    except Exception as e:
+        logging.error(f"Discord OAuth error: {e}")
+        return RedirectResponse(url=f"{FRONTEND_URL}/login?error=server_error")
 
+@api_router.get("/auth/me", response_model=UserResponse)
+async def get_me(user = Depends(require_auth)):
+    return {k: v for k, v in user.items() if k != "password"}
+
+# Keep admin login for backend access
 @api_router.post("/auth/admin-login", response_model=TokenResponse)
 async def admin_login(data: AdminLogin):
     user = await db.users.find_one({"nickname": data.username, "role": {"$in": ["admin", "owner"]}}, {"_id": 0})
@@ -294,10 +469,6 @@ async def admin_login(data: AdminLogin):
     token = create_token({"sub": user["id"], "role": user["role"]})
     user_response = {k: v for k, v in user.items() if k != "password"}
     return {"access_token": token, "user": user_response}
-
-@api_router.get("/auth/me", response_model=UserResponse)
-async def get_me(user = Depends(require_auth)):
-    return {k: v for k, v in user.items() if k != "password"}
 
 # ==================== SERVER STATUS ROUTES ====================
 
@@ -346,7 +517,6 @@ async def create_ban(data: BanCreate, user = Depends(require_admin)):
     await db.bans.insert_one(ban)
     return ban
 
-# Clear routes MUST be before parameterized routes
 @api_router.delete("/bans/clear/all")
 async def clear_all_bans(user = Depends(require_admin)):
     result = await db.bans.delete_many({})
@@ -436,7 +606,6 @@ async def get_top_players(limit: int = 15):
         p["rank"] = i + 1
     return players
 
-# Clear route MUST be before parameterized routes
 @api_router.delete("/players/clear/all")
 async def clear_all_players(user = Depends(require_admin)):
     result = await db.players.delete_many({})
@@ -576,6 +745,187 @@ async def delete_notification(notif_id: str):
     await db.notifications.delete_one({"id": notif_id})
     return {"message": "Notification deleted"}
 
+# ==================== FORUM ROUTES ====================
+
+@api_router.get("/forum/categories", response_model=List[ForumCategoryResponse])
+async def get_forum_categories():
+    categories = await db.forum_categories.find({}, {"_id": 0}).to_list(100)
+    # Update topic counts
+    for cat in categories:
+        cat["topic_count"] = await db.forum_topics.count_documents({"category_id": cat["id"]})
+    return categories
+
+@api_router.post("/forum/categories", response_model=ForumCategoryResponse)
+async def create_forum_category(data: ForumCategoryCreate, user = Depends(require_admin)):
+    category = {
+        "id": str(uuid.uuid4()),
+        **data.model_dump(),
+        "topic_count": 0,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.forum_categories.insert_one(category)
+    return category
+
+@api_router.delete("/forum/categories/{category_id}")
+async def delete_forum_category(category_id: str, user = Depends(require_admin)):
+    await db.forum_topics.delete_many({"category_id": category_id})
+    await db.forum_categories.delete_one({"id": category_id})
+    return {"message": "Category and all topics deleted"}
+
+@api_router.get("/forum/topics")
+async def get_forum_topics(category_id: Optional[str] = None, limit: int = 50):
+    query = {}
+    if category_id:
+        query["category_id"] = category_id
+    topics = await db.forum_topics.find(query, {"_id": 0}).sort([("is_pinned", -1), ("last_reply_at", -1), ("created_at", -1)]).to_list(limit)
+    return topics
+
+@api_router.get("/forum/topics/{topic_id}")
+async def get_forum_topic(topic_id: str):
+    topic = await db.forum_topics.find_one({"id": topic_id}, {"_id": 0})
+    if not topic:
+        raise HTTPException(status_code=404, detail="Topic not found")
+    return topic
+
+@api_router.post("/forum/topics", response_model=ForumTopicResponse)
+async def create_forum_topic(data: ForumTopicCreate, user = Depends(require_auth)):
+    category = await db.forum_categories.find_one({"id": data.category_id})
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
+    
+    topic = {
+        "id": str(uuid.uuid4()),
+        "category_id": data.category_id,
+        "title": data.title,
+        "content": data.content,
+        "author_id": user["id"],
+        "author_name": user["nickname"],
+        "author_avatar": user.get("discord_avatar"),
+        "reply_count": 0,
+        "is_pinned": False,
+        "is_locked": False,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "last_reply_at": None
+    }
+    await db.forum_topics.insert_one(topic)
+    await db.forum_categories.update_one({"id": data.category_id}, {"$inc": {"topic_count": 1}})
+    return topic
+
+@api_router.delete("/forum/topics/{topic_id}")
+async def delete_forum_topic(topic_id: str, user = Depends(require_auth)):
+    topic = await db.forum_topics.find_one({"id": topic_id})
+    if not topic:
+        raise HTTPException(status_code=404, detail="Topic not found")
+    
+    # Only author or admin can delete
+    if topic["author_id"] != user["id"] and user.get("role") not in ["admin", "owner"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    await db.forum_replies.delete_many({"topic_id": topic_id})
+    await db.forum_topics.delete_one({"id": topic_id})
+    await db.forum_categories.update_one({"id": topic["category_id"]}, {"$inc": {"topic_count": -1}})
+    return {"message": "Topic deleted"}
+
+@api_router.patch("/forum/topics/{topic_id}/pin")
+async def toggle_pin_topic(topic_id: str, user = Depends(require_admin)):
+    topic = await db.forum_topics.find_one({"id": topic_id})
+    if not topic:
+        raise HTTPException(status_code=404, detail="Topic not found")
+    
+    await db.forum_topics.update_one({"id": topic_id}, {"$set": {"is_pinned": not topic.get("is_pinned", False)}})
+    return {"message": "Topic pin toggled"}
+
+@api_router.patch("/forum/topics/{topic_id}/lock")
+async def toggle_lock_topic(topic_id: str, user = Depends(require_admin)):
+    topic = await db.forum_topics.find_one({"id": topic_id})
+    if not topic:
+        raise HTTPException(status_code=404, detail="Topic not found")
+    
+    await db.forum_topics.update_one({"id": topic_id}, {"$set": {"is_locked": not topic.get("is_locked", False)}})
+    return {"message": "Topic lock toggled"}
+
+@api_router.get("/forum/replies/{topic_id}", response_model=List[ForumReplyResponse])
+async def get_forum_replies(topic_id: str):
+    replies = await db.forum_replies.find({"topic_id": topic_id}, {"_id": 0}).sort("created_at", 1).to_list(500)
+    return replies
+
+@api_router.post("/forum/replies", response_model=ForumReplyResponse)
+async def create_forum_reply(data: ForumReplyCreate, user = Depends(require_auth)):
+    topic = await db.forum_topics.find_one({"id": data.topic_id})
+    if not topic:
+        raise HTTPException(status_code=404, detail="Topic not found")
+    
+    if topic.get("is_locked"):
+        raise HTTPException(status_code=403, detail="Topic is locked")
+    
+    reply = {
+        "id": str(uuid.uuid4()),
+        "topic_id": data.topic_id,
+        "content": data.content,
+        "author_id": user["id"],
+        "author_name": user["nickname"],
+        "author_avatar": user.get("discord_avatar"),
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.forum_replies.insert_one(reply)
+    await db.forum_topics.update_one(
+        {"id": data.topic_id},
+        {"$inc": {"reply_count": 1}, "$set": {"last_reply_at": reply["created_at"]}}
+    )
+    return reply
+
+@api_router.delete("/forum/replies/{reply_id}")
+async def delete_forum_reply(reply_id: str, user = Depends(require_auth)):
+    reply = await db.forum_replies.find_one({"id": reply_id})
+    if not reply:
+        raise HTTPException(status_code=404, detail="Reply not found")
+    
+    if reply["author_id"] != user["id"] and user.get("role") not in ["admin", "owner"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    await db.forum_replies.delete_one({"id": reply_id})
+    await db.forum_topics.update_one({"id": reply["topic_id"]}, {"$inc": {"reply_count": -1}})
+    return {"message": "Reply deleted"}
+
+# ==================== TEAM ROUTES ====================
+
+@api_router.get("/team", response_model=List[TeamMemberResponse])
+async def get_team_members():
+    members = await db.team_members.find({}, {"_id": 0}).sort("order", 1).to_list(100)
+    return members
+
+@api_router.post("/team", response_model=TeamMemberResponse)
+async def create_team_member(data: TeamMemberCreate, user = Depends(require_admin)):
+    member = {
+        "id": str(uuid.uuid4()),
+        **data.model_dump()
+    }
+    await db.team_members.insert_one(member)
+    return member
+
+@api_router.patch("/team/{member_id}", response_model=TeamMemberResponse)
+async def update_team_member(member_id: str, data: TeamMemberUpdate, user = Depends(require_admin)):
+    update_data = {k: v for k, v in data.model_dump().items() if v is not None}
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No data to update")
+    
+    result = await db.team_members.find_one_and_update(
+        {"id": member_id},
+        {"$set": update_data},
+        return_document=True
+    )
+    if not result:
+        raise HTTPException(status_code=404, detail="Team member not found")
+    result.pop("_id", None)
+    return result
+
+@api_router.delete("/team/{member_id}")
+async def delete_team_member(member_id: str, user = Depends(require_admin)):
+    result = await db.team_members.delete_one({"id": member_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Team member not found")
+    return {"message": "Team member deleted"}
+
 # ==================== OWNER: ADMIN USER MANAGEMENT ====================
 
 @api_router.post("/owner/create-admin")
@@ -591,6 +941,8 @@ async def create_admin_user(data: CreateAdminUser, user = Depends(require_owner)
         "password": hash_password(data.password),
         "steamid": data.steamid,
         "role": "admin",
+        "discord_id": None,
+        "discord_avatar": None,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     await db.users.insert_one(new_admin)
@@ -632,7 +984,7 @@ async def get_all_users(user = Depends(require_admin)):
 
 @api_router.get("/")
 async def root():
-    return {"message": "shadowzm: Zombie reverse API", "version": "1.0.0"}
+    return {"message": "shadowzm: Zombie reverse API", "version": "2.0.0"}
 
 # Include router
 app.include_router(api_router)
@@ -654,6 +1006,8 @@ logger = logging.getLogger(__name__)
 @app.on_event("startup")
 async def startup():
     await init_default_admin()
+    await init_default_forum_categories()
+    await init_default_team()
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
