@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Menu, X, Shield, Server, Users, Ban, FileText, UserPlus, LogIn, LogOut, Home, Crosshair, Bell, Check, Trash2 } from 'lucide-react';
+import { Menu, X, Shield, Server, Users, Ban, FileText, UserPlus, LogIn, LogOut, Home, Crosshair, Bell, Check, Trash2, MessageSquare } from 'lucide-react';
 
 export const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -14,7 +14,8 @@ export const Navigation = () => {
     { path: '/server-status', label: 'SERVER', icon: Server },
     { path: '/rankings', label: 'RANKINGS', icon: Crosshair },
     { path: '/banlist', label: 'BANLIST', icon: Ban },
-    { path: '/rules', label: 'RULES', icon: FileText },
+    { path: '/forum', label: 'FORUM', icon: MessageSquare },
+    { path: '/team', label: 'TEAM', icon: Users },
     { path: '/apply-admin', label: 'APPLY', icon: UserPlus },
   ];
 
