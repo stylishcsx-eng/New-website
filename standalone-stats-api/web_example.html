@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CS 1.6 Stats API - Web Example</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #ff4b4b;
+        }
+        .section {
+            background: #2a2a2a;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #ff4b4b;
+        }
+        .section h2 {
+            margin-bottom: 15px;
+            color: #ff4b4b;
+        }
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        .online { background: #4ade80; }
+        .offline { background: #ef4444; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #3a3a3a;
+        }
+        th {
+            background: #3a3a3a;
+            color: #ff4b4b;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #888;
+        }
+        .error {
+            background: #ef4444;
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎮 CS 1.6 Server Stats</h1>
+
+        <!-- Server Status -->
+        <div class="section">
+            <h2>Server Status</h2>
+            <div id="server-status" class="loading">Loading...</div>
+        </div>
+
+        <!-- Top Players -->
+        <div class="section">
+            <h2>Top 10 Players</h2>
+            <div id="rankings" class="loading">Loading...</div>
+        </div>
+
+        <!-- Active Bans -->
+        <div class="section">
+            <h2>Active Bans</h2>
+            <div id="bans" class="loading">Loading...</div>
+        </div>
+
+        <!-- Overall Stats -->
+        <div class="section">
+            <h2>Overall Statistics</h2>
+            <div id="stats" class="loading">Loading...</div>
+        </div>
+    </div>
+
+    <script>
+        // CHANGE THIS to your API URL
+        const API_URL = 'http://YOUR_PTERODACTYL_IP:8002';
+
+        // Fetch and display server status
+        async function loadServerStatus() {
+            try {
+                const response = await fetch(`${API_URL}/server-status`);
+                const data = await response.json();
+                
+                const statusDiv = document.getElementById('server-status');
+                
+                if (data.online) {
+                    statusDiv.innerHTML = `
+                        <div class="status">
+                            <span class="status-dot online"></span>
+                            <strong>ONLINE</strong>
+                        </div>
+                        <p><strong>Server:</strong> ${data.server_name}</p>
+                        <p><strong>Map:</strong> ${data.map}</p>
+                        <p><strong>Players:</strong> ${data.players}/${data.max_players}</p>
+                    `;
+                } else {
+                    statusDiv.innerHTML = `
+                        <div class="status">
+                            <span class="status-dot offline"></span>
+                            <strong>OFFLINE</strong>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('server-status').innerHTML = 
+                    `<div class="error">Error loading server status: ${error.message}</div>`;
+            }
+        }
+
+        // Fetch and display rankings
+        async function loadRankings() {
+            try {
+                const response = await fetch(`${API_URL}/rankings/top?limit=10`);
+                const data = await response.json();
+                
+                const rankingsDiv = document.getElementById('rankings');
+                
+                if (data.players && data.players.length > 0) {
+                    let html = `
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Rank</th>
+                                    <th>Player</th>
+                                    <th>Kills</th>
+                                    <th>Deaths</th>
+                                    <th>K/D</th>
+                                    <th>Headshots</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+                    
+                    data.players.forEach(player => {
+                        html += `
+                            <tr>
+                                <td>#${player.rank}</td>
+                                <td>${player.nickname}</td>
+                                <td>${player.kills}</td>
+                                <td>${player.deaths}</td>
+                                <td>${player.kd_ratio}</td>
+                                <td>${player.headshots}</td>
+                            </tr>
+                        `;
+                    });
+                    
+                    html += '</tbody></table>';
+                    rankingsDiv.innerHTML = html;
+                } else {
+                    rankingsDiv.innerHTML = '<p>No player data available</p>';
+                }
+            } catch (error) {
+                document.getElementById('rankings').innerHTML = 
+                    `<div class="error">Error loading rankings: ${error.message}</div>`;
+            }
+        }
+
+        // Fetch and display bans
+        async function loadBans() {
+            try {
+                const response = await fetch(`${API_URL}/bans`);
+                const data = await response.json();
+                
+                const bansDiv = document.getElementById('bans');
+                
+                if (data.bans && data.bans.length > 0) {
+                    let html = `
+                        <p><strong>Total Bans:</strong> ${data.total}</p>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Player</th>
+                                    <th>SteamID</th>
+                                    <th>Reason</th>
+                                    <th>Admin</th>
+                                    <th>Duration</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+                    
+                    data.bans.slice(0, 10).forEach(ban => {
+                        html += `
+                            <tr>
+                                <td>${ban.player_nickname}</td>
+                                <td>${ban.steamid}</td>
+                                <td>${ban.reason}</td>
+                                <td>${ban.admin_name}</td>
+                                <td>${ban.duration}</td>
+                            </tr>
+                        `;
+                    });
+                    
+                    html += '</tbody></table>';
+                    bansDiv.innerHTML = html;
+                } else {
+                    bansDiv.innerHTML = '<p>No active bans</p>';
+                }
+            } catch (error) {
+                document.getElementById('bans').innerHTML = 
+                    `<div class="error">Error loading bans: ${error.message}</div>`;
+            }
+        }
+
+        // Fetch and display overall stats
+        async function loadOverallStats() {
+            try {
+                const response = await fetch(`${API_URL}/stats`);
+                const data = await response.json();
+                
+                const statsDiv = document.getElementById('stats');
+                
+                statsDiv.innerHTML = `
+                    <p><strong>Total Players:</strong> ${data.statistics.total_players}</p>
+                    <p><strong>Total Bans:</strong> ${data.statistics.total_bans}</p>
+                    <p><strong>Total Kills:</strong> ${data.statistics.total_kills.toLocaleString()}</p>
+                    <p><strong>Total Deaths:</strong> ${data.statistics.total_deaths.toLocaleString()}</p>
+                    <p><strong>Total Headshots:</strong> ${data.statistics.total_headshots.toLocaleString()}</p>
+                    ${data.top_player ? `
+                        <hr style="margin: 15px 0; border-color: #3a3a3a;">
+                        <p><strong>Top Player:</strong> ${data.top_player.nickname}</p>
+                        <p><strong>Kills:</strong> ${data.top_player.kills} | <strong>K/D:</strong> ${data.top_player.kd_ratio}</p>
+                    ` : ''}
+                `;
+            } catch (error) {
+                document.getElementById('stats').innerHTML = 
+                    `<div class="error">Error loading stats: ${error.message}</div>`;
+            }
+        }
+
+        // Load all data on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            loadServerStatus();
+            loadRankings();
+            loadBans();
+            loadOverallStats();
+            
+            // Refresh every 30 seconds
+            setInterval(() => {
+                loadServerStatus();
+                loadRankings();
+                loadBans();
+                loadOverallStats();
+            }, 30000);
+        });
+    </script>
+</body>
+</html>
