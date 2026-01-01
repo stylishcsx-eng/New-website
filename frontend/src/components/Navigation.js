@@ -226,24 +226,15 @@ export const Navigation = () => {
                     </button>
                   </>
                 ) : (
-                  <>
-                    <Link
-                      to="/login"
-                      onClick={() => setIsOpen(false)}
-                      className="flex items-center space-x-3 px-4 py-3 text-muted-foreground hover:text-white font-heading text-sm uppercase tracking-widest"
-                    >
-                      <LogIn className="w-5 h-5" />
-                      <span>LOGIN</span>
-                    </Link>
-                    <Link
-                      to="/register"
-                      onClick={() => setIsOpen(false)}
-                      className="flex items-center space-x-3 px-4 py-3 text-primary font-heading text-sm uppercase tracking-widest"
-                    >
-                      <UserPlus className="w-5 h-5" />
-                      <span>REGISTER</span>
-                    </Link>
-                  </>
+                  <Link
+                    to="/login"
+                    onClick={() => setIsOpen(false)}
+                    className="flex items-center space-x-3 px-4 py-3 text-white font-heading text-sm uppercase tracking-widest"
+                    style={{ backgroundColor: '#5865F2' }}
+                  >
+                    <LogIn className="w-5 h-5" />
+                    <span>LOGIN WITH DISCORD</span>
+                  </Link>
                 )}
               </div>
             </div>
