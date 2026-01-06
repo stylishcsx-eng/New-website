@@ -1362,6 +1362,57 @@ async def get_all_users(user = Depends(require_admin)):
     users = await db.users.find({}, {"_id": 0, "password": 0}).to_list(1000)
     return users
 
+# ==================== CHAT ROUTES ====================
+
+class ChatMessageCreate(BaseModel):
+    content: str
+    image_url: Optional[str] = None
+
+class ChatMessageResponse(BaseModel):
+    id: str
+    user_id: str
+    user_name: str
+    user_avatar: Optional[str] = None
+    user_role: Optional[str] = None
+    content: str
+    image_url: Optional[str] = None
+    created_at: str
+
+@api_router.get("/chat/messages", response_model=List[ChatMessageResponse])
+async def get_chat_messages(limit: int = 50):
+    messages = await db.chat_messages.find({}, {"_id": 0}).sort("created_at", -1).limit(limit).to_list(limit)
+    # Reverse to show oldest first
+    messages.reverse()
+    return messages
+
+@api_router.post("/chat/messages", response_model=ChatMessageResponse)
+async def create_chat_message(data: ChatMessageCreate, user = Depends(require_auth)):
+    message = {
+        "id": str(uuid.uuid4()),
+        "user_id": user["id"],
+        "user_name": user["nickname"],
+        "user_avatar": user.get("discord_avatar"),
+        "user_role": user.get("role"),
+        "content": data.content[:500],  # Limit to 500 chars
+        "image_url": data.image_url,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.chat_messages.insert_one(message)
+    return message
+
+@api_router.delete("/chat/messages/{message_id}")
+async def delete_chat_message(message_id: str, user = Depends(require_auth)):
+    message = await db.chat_messages.find_one({"id": message_id})
+    if not message:
+        raise HTTPException(status_code=404, detail="Message not found")
+    
+    # Only allow delete by author or admin/owner
+    if message["user_id"] != user["id"] and user.get("role") not in ["admin", "owner"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    await db.chat_messages.delete_one({"id": message_id})
+    return {"message": "Deleted"}
+
 # ==================== ROOT ====================
 
 @api_router.get("/")
