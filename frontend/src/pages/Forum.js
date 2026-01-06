@@ -1182,6 +1182,8 @@ export const ForumTopic = () => {
                 </p>
               </div>
               <div className="text-white whitespace-pre-wrap leading-relaxed">{topic.content}</div>
+              {/* Topic Media */}
+              {renderMedia(topic.media_urls)}
             </div>
           </div>
         </div>
