@@ -214,6 +214,83 @@ export const ApplyAdmin = () => {
             />
           </div>
 
+          <div>
+            <label className="block text-xs text-muted-foreground uppercase tracking-wider mb-2 font-heading">
+              How well do you know admin commands? *
+            </label>
+            <div className="grid grid-cols-3 gap-3">
+              <label 
+                className={`flex flex-col items-center p-4 cursor-pointer border transition-all ${
+                  formData.admin_commands_knowledge === 'bad' 
+                    ? 'border-red-500 bg-red-500/20' 
+                    : 'border-white/10 bg-muted/50 hover:border-white/30'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="admin_commands_knowledge"
+                  value="bad"
+                  checked={formData.admin_commands_knowledge === 'bad'}
+                  onChange={handleChange}
+                  className="sr-only"
+                />
+                <span className="text-2xl mb-2">😕</span>
+                <span className={`font-heading uppercase text-sm ${
+                  formData.admin_commands_knowledge === 'bad' ? 'text-red-500' : 'text-muted-foreground'
+                }`}>Bad</span>
+                <span className="text-xs text-muted-foreground mt-1 text-center">
+                  Still learning
+                </span>
+              </label>
+              <label 
+                className={`flex flex-col items-center p-4 cursor-pointer border transition-all ${
+                  formData.admin_commands_knowledge === 'good' 
+                    ? 'border-yellow-500 bg-yellow-500/20' 
+                    : 'border-white/10 bg-muted/50 hover:border-white/30'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="admin_commands_knowledge"
+                  value="good"
+                  checked={formData.admin_commands_knowledge === 'good'}
+                  onChange={handleChange}
+                  className="sr-only"
+                />
+                <span className="text-2xl mb-2">🙂</span>
+                <span className={`font-heading uppercase text-sm ${
+                  formData.admin_commands_knowledge === 'good' ? 'text-yellow-500' : 'text-muted-foreground'
+                }`}>Good</span>
+                <span className="text-xs text-muted-foreground mt-1 text-center">
+                  Know the basics
+                </span>
+              </label>
+              <label 
+                className={`flex flex-col items-center p-4 cursor-pointer border transition-all ${
+                  formData.admin_commands_knowledge === 'excellent' 
+                    ? 'border-green-500 bg-green-500/20' 
+                    : 'border-white/10 bg-muted/50 hover:border-white/30'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="admin_commands_knowledge"
+                  value="excellent"
+                  checked={formData.admin_commands_knowledge === 'excellent'}
+                  onChange={handleChange}
+                  className="sr-only"
+                />
+                <span className="text-2xl mb-2">🤩</span>
+                <span className={`font-heading uppercase text-sm ${
+                  formData.admin_commands_knowledge === 'excellent' ? 'text-green-500' : 'text-muted-foreground'
+                }`}>Excellent</span>
+                <span className="text-xs text-muted-foreground mt-1 text-center">
+                  Expert level
+                </span>
+              </label>
+            </div>
+          </div>
+
           <button
             type="submit"
             disabled={loading}
