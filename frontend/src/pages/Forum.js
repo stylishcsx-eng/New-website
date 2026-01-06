@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
+import { Chatbox } from '../components/Chatbox';
 import { 
   MessageSquare, Plus, Pin, Lock, MessageCircle, Trash2, User, Clock, 
   Eye, Megaphone, HelpCircle, Scale, Coffee, ChevronRight, ArrowLeft,
   Settings, FolderPlus, Edit, Users, Bug, Shield, AlertTriangle, Tag,
-  CheckCircle, XCircle, Archive, Bell
+  CheckCircle, XCircle, Archive, Bell, Image, Film
 } from 'lucide-react';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
