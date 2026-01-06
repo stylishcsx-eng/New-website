@@ -77,17 +77,6 @@ class UserResponse(BaseModel):
     bio: Optional[str] = None
     post_count: Optional[int] = 0
 
-class UserProfileResponse(BaseModel):
-    id: str
-    nickname: str
-    steamid: Optional[str] = None
-    role: str
-    created_at: str
-    discord_avatar: Optional[str] = None
-    bio: Optional[str] = None
-    post_count: int
-    reputation: int
-
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
