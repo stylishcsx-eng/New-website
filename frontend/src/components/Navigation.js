@@ -201,6 +201,15 @@ export const Navigation = () => {
               <div className="border-t border-white/5 pt-4 mt-2">
                 {isAuthenticated ? (
                   <>
+                    {/* My Profile Link */}
+                    <Link
+                      to={`/profile/${user?.id}`}
+                      onClick={() => setIsOpen(false)}
+                      className="flex items-center space-x-3 px-4 py-3 text-muted-foreground hover:text-white font-heading text-sm uppercase tracking-widest"
+                    >
+                      <User className="w-5 h-5" />
+                      <span>MY PROFILE</span>
+                    </Link>
                     {/* Mobile Notifications */}
                     {notifications.length > 0 && (
                       <div className="px-4 py-2 mb-2">
