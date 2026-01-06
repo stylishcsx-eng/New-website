@@ -207,9 +207,9 @@ export const PlayerProfile = () => {
                 className="w-32 h-32 md:w-40 md:h-40 rounded-full overflow-hidden border-4 bg-card shadow-xl"
                 style={{ borderColor: roleBadge.color }}
               >
-                {profile.discord_avatar ? (
+                {(profile.avatar_url || profile.discord_avatar) ? (
                   <img 
-                    src={profile.discord_avatar} 
+                    src={profile.avatar_url || profile.discord_avatar} 
                     alt={profile.nickname} 
                     className="w-full h-full object-cover"
                   />
