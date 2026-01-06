@@ -91,7 +91,8 @@ export const PlayerProfile = () => {
         bio: profileRes.data.bio || '',
         steamid: profileRes.data.steamid || '',
         birthday: profileRes.data.birthday || '',
-        location: profileRes.data.location || ''
+        location: profileRes.data.location || '',
+        avatar_url: profileRes.data.avatar_url || ''
       });
 
       // Try to fetch player stats if steamid exists
