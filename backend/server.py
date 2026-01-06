@@ -1117,7 +1117,42 @@ async def delete_forum_reply(reply_id: str, user = Depends(require_auth)):
 @api_router.get("/team", response_model=List[TeamMemberResponse])
 async def get_team_members():
     members = await db.team_members.find({}, {"_id": 0}).sort("order", 1).to_list(100)
+    # Ensure role_type exists for all members
+    for m in members:
+        if "role_type" not in m:
+            m["role_type"] = "owner" if m.get("role", "").lower() == "owner" else "member"
     return members
+
+@api_router.get("/team/roles")
+async def get_team_roles():
+    roles = await db.team_roles.find({}, {"_id": 0}).sort("order", 1).to_list(50)
+    return roles
+
+@api_router.post("/team/roles")
+async def create_team_role(data: TeamRoleConfigCreate, user = Depends(require_admin)):
+    role = {
+        "id": str(uuid.uuid4()),
+        **data.model_dump()
+    }
+    await db.team_roles.insert_one(role)
+    return role
+
+@api_router.patch("/team/roles/{role_id}")
+async def update_team_role(role_id: str, data: dict, user = Depends(require_admin)):
+    result = await db.team_roles.find_one_and_update(
+        {"id": role_id},
+        {"$set": data},
+        return_document=True
+    )
+    if not result:
+        raise HTTPException(status_code=404, detail="Role not found")
+    result.pop("_id", None)
+    return result
+
+@api_router.delete("/team/roles/{role_id}")
+async def delete_team_role(role_id: str, user = Depends(require_admin)):
+    await db.team_roles.delete_one({"id": role_id})
+    return {"message": "Role deleted"}
 
 @api_router.post("/team", response_model=TeamMemberResponse)
 async def create_team_member(data: TeamMemberCreate, user = Depends(require_admin)):
