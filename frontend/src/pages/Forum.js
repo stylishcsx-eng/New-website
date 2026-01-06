@@ -458,9 +458,38 @@ export const ForumCategory = () => {
   const [topics, setTopics] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showNewTopic, setShowNewTopic] = useState(false);
-  const [newTopic, setNewTopic] = useState({ title: '', content: '', tag: '' });
+  const [newTopic, setNewTopic] = useState({ title: '', content: '', tag: '', media_urls: [] });
+  const [mediaInput, setMediaInput] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [filterTag, setFilterTag] = useState('all');
+
+  // Helper to detect media type
+  const getMediaType = (url) => {
+    const lower = url.toLowerCase();
+    if (lower.match(/\.(mp4|webm|ogg|mov)(\?.*)?$/)) return 'video';
+    if (lower.match(/\.(gif)(\?.*)?$/)) return 'gif';
+    if (lower.match(/\.(jpg|jpeg|png|webp|bmp)(\?.*)?$/)) return 'image';
+    if (lower.includes('youtube.com') || lower.includes('youtu.be')) return 'youtube';
+    if (lower.includes('imgur.com') || lower.includes('gyazo.com') || lower.includes('prnt.sc')) return 'image';
+    return 'image'; // default to image
+  };
+
+  const addMediaUrl = () => {
+    if (mediaInput.trim() && newTopic.media_urls.length < 5) {
+      setNewTopic({
+        ...newTopic,
+        media_urls: [...newTopic.media_urls, mediaInput.trim()]
+      });
+      setMediaInput('');
+    }
+  };
+
+  const removeMediaUrl = (index) => {
+    setNewTopic({
+      ...newTopic,
+      media_urls: newTopic.media_urls.filter((_, i) => i !== index)
+    });
+  };
 
   useEffect(() => {
     fetchData();
