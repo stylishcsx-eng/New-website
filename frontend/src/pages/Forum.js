@@ -5,7 +5,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { 
   MessageSquare, Plus, Pin, Lock, MessageCircle, Trash2, User, Clock, 
   Eye, Megaphone, HelpCircle, Scale, Coffee, ChevronRight, ArrowLeft,
-  Settings, FolderPlus, Edit, Users
+  Settings, FolderPlus, Edit, Users, Bug, Shield, AlertTriangle, Tag,
+  CheckCircle, XCircle, Archive, Bell
 } from 'lucide-react';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
@@ -18,7 +19,10 @@ const iconMap = {
   HelpCircle: HelpCircle,
   Scale: Scale,
   Coffee: Coffee,
-  Users: Users
+  Users: Users,
+  Bug: Bug,
+  Shield: Shield,
+  AlertTriangle: AlertTriangle
 };
 
 // Format relative time
@@ -35,18 +39,26 @@ const formatRelativeTime = (dateStr) => {
   if (minutes < 60) return `${minutes}m ago`;
   if (hours < 24) return `${hours}h ago`;
   if (days < 7) return `${days}d ago`;
-  return date.toLocaleDateString();
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 };
 
-// Main Forum Page with Categories
+// Format post count
+const formatCount = (count) => {
+  if (count >= 1000) return (count / 1000).toFixed(1) + 'k';
+  return count;
+};
+
+// Main Forum Page with Categories - LSGAMERS Style
 export const Forum = () => {
   const navigate = useNavigate();
   const { isAuthenticated, isAdmin, user } = useAuth();
-  const [categories, setCategories] = useState([]);
-  const [recentTopics, setRecentTopics] = useState([]);
+  const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showNewSection, setShowNewSection] = useState(false);
   const [showNewCategory, setShowNewCategory] = useState(false);
-  const [newCategory, setNewCategory] = useState({ name: '', description: '', icon: 'MessageSquare' });
+  const [selectedSection, setSelectedSection] = useState(null);
+  const [newSection, setNewSection] = useState({ name: '', description: '', icon: 'MessageSquare', order: 0 });
+  const [newCategory, setNewCategory] = useState({ name: '', description: '', icon: 'MessageSquare', tags: '' });
 
   useEffect(() => {
     fetchData();
@@ -54,29 +66,61 @@ export const Forum = () => {
 
   const fetchData = async () => {
     try {
-      const [catRes, recentRes] = await Promise.all([
-        axios.get(`${API}/forum/categories`),
-        axios.get(`${API}/forum/topics/recent?limit=5`)
-      ]);
-      setCategories(catRes.data);
-      setRecentTopics(recentRes.data);
+      const res = await axios.get(`${API}/forum/sections`);
+      setSections(res.data);
     } catch (error) {
       console.error('Failed to fetch data', error);
+      // Fallback to old categories API
+      try {
+        const catRes = await axios.get(`${API}/forum/categories`);
+        setSections([{ id: 'default', name: 'Community', categories: catRes.data }]);
+      } catch (e) {
+        console.error('Failed to fetch categories', e);
+      }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCreateSection = async (e) => {
+    e.preventDefault();
+    try {
+      await axios.post(`${API}/forum/sections`, newSection);
+      setNewSection({ name: '', description: '', icon: 'MessageSquare', order: 0 });
+      setShowNewSection(false);
+      fetchData();
+    } catch (error) {
+      console.error('Failed to create section', error);
+      alert(error.response?.data?.detail || 'Failed to create section');
     }
   };
 
   const handleCreateCategory = async (e) => {
     e.preventDefault();
     try {
-      await axios.post(`${API}/forum/categories`, newCategory);
-      setNewCategory({ name: '', description: '', icon: 'MessageSquare' });
+      const tags = newCategory.tags.split(',').map(t => t.trim()).filter(t => t);
+      await axios.post(`${API}/forum/categories`, {
+        ...newCategory,
+        section_id: selectedSection,
+        tags: tags
+      });
+      setNewCategory({ name: '', description: '', icon: 'MessageSquare', tags: '' });
       setShowNewCategory(false);
+      setSelectedSection(null);
       fetchData();
     } catch (error) {
       console.error('Failed to create category', error);
       alert(error.response?.data?.detail || 'Failed to create category');
+    }
+  };
+
+  const handleDeleteSection = async (sectionId) => {
+    if (!window.confirm('Delete this section and ALL its categories/topics? This cannot be undone!')) return;
+    try {
+      await axios.delete(`${API}/forum/sections/${sectionId}`);
+      fetchData();
+    } catch (error) {
+      console.error('Failed to delete section', error);
     }
   };
 
@@ -100,10 +144,6 @@ export const Forum = () => {
       </div>
     );
   }
-
-  // Calculate total stats
-  const totalTopics = categories.reduce((acc, cat) => acc + (cat.topic_count || 0), 0);
-  const totalPosts = categories.reduce((acc, cat) => acc + (cat.post_count || 0), 0);
 
   return (
     <div className="min-h-screen bg-background pt-20 pb-16">
@@ -130,17 +170,17 @@ export const Forum = () => {
                   FORUM
                 </h1>
                 <p className="text-muted-foreground">
-                  {totalTopics} topics • {totalPosts} posts • Join the discussion!
+                  Join the community discussion!
                 </p>
               </div>
             </div>
             {isAdmin && (
               <button
-                onClick={() => setShowNewCategory(true)}
+                onClick={() => setShowNewSection(true)}
                 className="flex items-center space-x-2 px-4 py-2 bg-green-500/20 border border-green-500 text-green-500 hover:bg-green-500 hover:text-white transition-all font-heading uppercase text-sm tracking-wider"
               >
                 <FolderPlus className="w-4 h-4" />
-                <span className="hidden sm:inline">New Category</span>
+                <span className="hidden sm:inline">New Section</span>
               </button>
             )}
           </div>
@@ -148,23 +188,65 @@ export const Forum = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Admin: New Category Form */}
-        {showNewCategory && isAdmin && (
+        {/* Admin: New Section Form */}
+        {showNewSection && isAdmin && (
           <div className="bg-card/50 border border-green-500/50 p-6 mb-6">
             <h3 className="font-heading text-xl font-bold text-white mb-4 flex items-center space-x-2">
               <FolderPlus className="w-5 h-5 text-green-500" />
-              <span>CREATE NEW CATEGORY</span>
+              <span>CREATE NEW SECTION</span>
+            </h3>
+            <form onSubmit={handleCreateSection} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-muted-foreground uppercase tracking-wider mb-2">Section Name</label>
+                  <input
+                    type="text"
+                    value={newSection.name}
+                    onChange={(e) => setNewSection({ ...newSection, name: e.target.value })}
+                    className="w-full bg-muted/50 border border-white/10 px-4 py-3 text-white outline-none focus:border-green-500"
+                    placeholder="e.g., Report Section, Community"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm text-muted-foreground uppercase tracking-wider mb-2">Order</label>
+                  <input
+                    type="number"
+                    value={newSection.order}
+                    onChange={(e) => setNewSection({ ...newSection, order: parseInt(e.target.value) })}
+                    className="w-full bg-muted/50 border border-white/10 px-4 py-3 text-white outline-none focus:border-green-500"
+                  />
+                </div>
+              </div>
+              <div className="flex space-x-3">
+                <button type="submit" className="px-6 py-3 bg-green-500 text-white font-heading uppercase text-sm tracking-wider hover:bg-green-600 transition-colors">
+                  Create Section
+                </button>
+                <button type="button" onClick={() => setShowNewSection(false)} className="px-6 py-3 border border-white/20 text-white font-heading uppercase text-sm tracking-wider hover:bg-white/5 transition-colors">
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* Admin: New Category Form */}
+        {showNewCategory && isAdmin && (
+          <div className="bg-card/50 border border-primary/50 p-6 mb-6">
+            <h3 className="font-heading text-xl font-bold text-white mb-4 flex items-center space-x-2">
+              <Plus className="w-5 h-5 text-primary" />
+              <span>ADD CATEGORY TO SECTION</span>
             </h3>
             <form onSubmit={handleCreateCategory} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm text-muted-foreground uppercase tracking-wider mb-2">Name</label>
+                  <label className="block text-sm text-muted-foreground uppercase tracking-wider mb-2">Category Name</label>
                   <input
                     type="text"
                     value={newCategory.name}
                     onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })}
-                    className="w-full bg-muted/50 border border-white/10 px-4 py-3 text-white outline-none focus:border-green-500"
-                    placeholder="Category name"
+                    className="w-full bg-muted/50 border border-white/10 px-4 py-3 text-white outline-none focus:border-primary"
+                    placeholder="e.g., Report Cheaters, General Discussion"
                     required
                   />
                 </div>
@@ -173,14 +255,16 @@ export const Forum = () => {
                   <select
                     value={newCategory.icon}
                     onChange={(e) => setNewCategory({ ...newCategory, icon: e.target.value })}
-                    className="w-full bg-muted/50 border border-white/10 px-4 py-3 text-white outline-none focus:border-green-500"
+                    className="w-full bg-muted/50 border border-white/10 px-4 py-3 text-white outline-none focus:border-primary"
                   >
                     <option value="MessageSquare">💬 Message</option>
                     <option value="Megaphone">📢 Megaphone</option>
                     <option value="HelpCircle">❓ Help</option>
-                    <option value="Scale">⚖️ Scale</option>
-                    <option value="Coffee">☕ Coffee</option>
+                    <option value="Bug">🐛 Bug</option>
+                    <option value="Shield">🛡️ Shield</option>
+                    <option value="AlertTriangle">⚠️ Alert</option>
                     <option value="Users">👥 Users</option>
+                    <option value="Coffee">☕ Coffee</option>
                   </select>
                 </div>
               </div>
@@ -190,23 +274,27 @@ export const Forum = () => {
                   type="text"
                   value={newCategory.description}
                   onChange={(e) => setNewCategory({ ...newCategory, description: e.target.value })}
-                  className="w-full bg-muted/50 border border-white/10 px-4 py-3 text-white outline-none focus:border-green-500"
+                  className="w-full bg-muted/50 border border-white/10 px-4 py-3 text-white outline-none focus:border-primary"
                   placeholder="Brief description of this category"
                   required
                 />
               </div>
+              <div>
+                <label className="block text-sm text-muted-foreground uppercase tracking-wider mb-2">Status Tags (comma separated)</label>
+                <input
+                  type="text"
+                  value={newCategory.tags}
+                  onChange={(e) => setNewCategory({ ...newCategory, tags: e.target.value })}
+                  className="w-full bg-muted/50 border border-white/10 px-4 py-3 text-white outline-none focus:border-primary"
+                  placeholder="e.g., Not Banned, Banned, Gags OR Resolved, Unresolved"
+                />
+                <p className="text-xs text-muted-foreground mt-1">Leave empty if no status tags needed</p>
+              </div>
               <div className="flex space-x-3">
-                <button
-                  type="submit"
-                  className="px-6 py-3 bg-green-500 text-white font-heading uppercase text-sm tracking-wider hover:bg-green-600 transition-colors"
-                >
+                <button type="submit" className="px-6 py-3 bg-primary text-white font-heading uppercase text-sm tracking-wider hover:bg-primary/90 transition-colors">
                   Create Category
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setShowNewCategory(false)}
-                  className="px-6 py-3 border border-white/20 text-white font-heading uppercase text-sm tracking-wider hover:bg-white/5 transition-colors"
-                >
+                <button type="button" onClick={() => { setShowNewCategory(false); setSelectedSection(null); }} className="px-6 py-3 border border-white/20 text-white font-heading uppercase text-sm tracking-wider hover:bg-white/5 transition-colors">
                   Cancel
                 </button>
               </div>
@@ -214,134 +302,142 @@ export const Forum = () => {
           </div>
         )}
 
-        {/* Categories List */}
-        <div className="space-y-2">
-          {/* Table Header */}
-          <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-3 bg-card/80 border border-white/10 text-xs text-muted-foreground uppercase tracking-wider font-heading">
-            <div className="col-span-6">Forum</div>
-            <div className="col-span-2 text-center">Topics</div>
-            <div className="col-span-2 text-center">Posts</div>
-            <div className="col-span-2">Last Post</div>
+        {/* Forum Sections */}
+        {sections.length === 0 ? (
+          <div className="text-center py-16 bg-card/30 border border-white/10">
+            <MessageSquare className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+            <p className="text-muted-foreground font-heading uppercase">No forum sections yet</p>
+            {isAdmin && <p className="text-sm text-muted-foreground mt-2">Create a section to get started!</p>}
           </div>
-
-          {categories.length === 0 ? (
-            <div className="text-center py-16 bg-card/30 border border-white/10">
-              <MessageSquare className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground font-heading uppercase">No categories yet</p>
-              {isAdmin && <p className="text-sm text-muted-foreground mt-2">Create a category to get started!</p>}
-            </div>
-          ) : (
-            categories.map((category) => {
-              const IconComponent = iconMap[category.icon] || MessageSquare;
-              return (
-                <div 
-                  key={category.id}
-                  className="bg-card/50 border border-white/10 hover:border-primary/50 transition-all group"
-                >
-                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4 px-6 py-5">
-                    {/* Category Info */}
-                    <div className="col-span-1 md:col-span-6">
-                      <Link 
-                        to={`/forum/category/${category.id}`}
-                        className="flex items-start space-x-4"
+        ) : (
+          <div className="space-y-8">
+            {sections.map((section) => (
+              <div key={section.id} className="space-y-1">
+                {/* Section Header */}
+                <div className="flex items-center justify-between bg-card/80 border border-white/10 px-4 py-3">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-primary font-heading text-lg uppercase tracking-wider">
+                      -{section.name.substring(0, 2).toUpperCase()}- {section.name}
+                    </span>
+                  </div>
+                  {isAdmin && (
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => { setSelectedSection(section.id); setShowNewCategory(true); }}
+                        className="p-1.5 text-green-500 hover:bg-green-500/20 transition-colors"
+                        title="Add Category"
                       >
-                        <div className="w-12 h-12 bg-primary/20 border border-primary/50 flex items-center justify-center flex-shrink-0 group-hover:bg-primary/30 transition-colors">
-                          <IconComponent className="w-6 h-6 text-primary" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-heading text-lg text-white group-hover:text-primary transition-colors flex items-center space-x-2">
-                            <span>{category.name}</span>
-                            <ChevronRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
-                          </h3>
-                          <p className="text-muted-foreground text-sm mt-1 line-clamp-2">
-                            {category.description}
-                          </p>
-                        </div>
-                      </Link>
-                      {isAdmin && (
-                        <button
-                          onClick={() => handleDeleteCategory(category.id)}
-                          className="mt-2 ml-16 text-red-500 hover:text-red-400 text-xs flex items-center space-x-1"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                          <span>Delete</span>
-                        </button>
-                      )}
+                        <Plus className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteSection(section.id)}
+                        className="p-1.5 text-red-500 hover:bg-red-500/20 transition-colors"
+                        title="Delete Section"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
+                  )}
+                </div>
 
-                    {/* Topics Count */}
-                    <div className="col-span-1 md:col-span-2 flex md:flex-col items-center justify-center">
-                      <span className="text-2xl font-bold text-white">{category.topic_count || 0}</span>
-                      <span className="text-xs text-muted-foreground uppercase ml-2 md:ml-0">Topics</span>
-                    </div>
+                {/* Categories in Section */}
+                {section.categories && section.categories.length > 0 ? (
+                  section.categories.map((category) => {
+                    const IconComponent = iconMap[category.icon] || MessageSquare;
+                    return (
+                      <div 
+                        key={category.id}
+                        className="bg-card/30 border border-white/5 hover:border-primary/30 transition-all"
+                      >
+                        <div className="flex flex-col md:flex-row">
+                          {/* Left: Icon, Title, Description, Tags */}
+                          <div className="flex-1 p-4 md:p-6">
+                            <div className="flex items-start space-x-4">
+                              {/* Logo/Icon */}
+                              <div className="w-12 h-12 bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                <IconComponent className="w-6 h-6 text-primary" />
+                              </div>
+                              
+                              <div className="flex-1 min-w-0">
+                                <Link 
+                                  to={`/forum/category/${category.id}`}
+                                  className="group"
+                                >
+                                  <h3 className="font-heading text-lg text-white group-hover:text-primary transition-colors">
+                                    {category.name}
+                                  </h3>
+                                </Link>
+                                <p className="text-muted-foreground text-sm mt-1">
+                                  {category.description}
+                                </p>
+                                
+                                {/* Status Tags */}
+                                {category.tags && category.tags.length > 0 && (
+                                  <div className="flex flex-wrap gap-2 mt-3">
+                                    {category.tags.map((tag, idx) => (
+                                      <span 
+                                        key={idx}
+                                        className="flex items-center space-x-1 px-2 py-1 bg-primary/10 text-primary text-xs"
+                                      >
+                                        <Tag className="w-3 h-3" />
+                                        <span>{tag}</span>
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
 
-                    {/* Posts Count */}
-                    <div className="col-span-1 md:col-span-2 flex md:flex-col items-center justify-center">
-                      <span className="text-2xl font-bold text-white">{category.post_count || 0}</span>
-                      <span className="text-xs text-muted-foreground uppercase ml-2 md:ml-0">Posts</span>
-                    </div>
+                                {/* Admin Controls */}
+                                {isAdmin && (
+                                  <button
+                                    onClick={() => handleDeleteCategory(category.id)}
+                                    className="mt-2 text-red-500 hover:text-red-400 text-xs flex items-center space-x-1"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                    <span>Delete</span>
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
 
-                    {/* Last Post */}
-                    <div className="col-span-1 md:col-span-2">
-                      {category.last_post ? (
-                        <div className="text-sm">
-                          <Link 
-                            to={`/forum/topic/${category.last_post.topic_id}`}
-                            className="text-white hover:text-primary truncate block"
-                          >
-                            {category.last_post.topic_title}
-                          </Link>
-                          <div className="text-xs text-muted-foreground mt-1">
-                            <span className="text-primary">{category.last_post.author}</span>
-                            <span className="mx-1">•</span>
-                            <span>{formatRelativeTime(category.last_post.date)}</span>
+                          {/* Right: Post Count & Last Activity */}
+                          <div className="flex md:flex-col items-center justify-between md:justify-center md:w-48 p-4 border-t md:border-t-0 md:border-l border-white/5 bg-black/20">
+                            <div className="text-center mb-0 md:mb-4">
+                              <span className="text-2xl md:text-3xl font-bold text-primary">
+                                {formatCount(category.post_count || 0)}
+                              </span>
+                              <p className="text-xs text-muted-foreground uppercase">Posts</p>
+                            </div>
+                            
+                            {category.last_post ? (
+                              <div className="text-right md:text-center">
+                                <Link 
+                                  to={`/forum/topic/${category.last_post.topic_id}`}
+                                  className="text-sm text-white hover:text-primary truncate block max-w-[150px]"
+                                >
+                                  {category.last_post.topic_title}
+                                </Link>
+                                <div className="text-xs text-muted-foreground mt-1">
+                                  By <span className="text-primary">{category.last_post.author}</span>
+                                  <br />
+                                  {formatRelativeTime(category.last_post.date)}
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">No posts yet</span>
+                            )}
                           </div>
                         </div>
-                      ) : (
-                        <span className="text-muted-foreground text-sm">No posts yet</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-
-        {/* Recent Activity */}
-        {recentTopics.length > 0 && (
-          <div className="mt-8">
-            <h2 className="font-heading text-xl uppercase tracking-wider text-white mb-4 flex items-center space-x-2">
-              <Clock className="w-5 h-5 text-primary" />
-              <span>Recent Activity</span>
-            </h2>
-            <div className="space-y-2">
-              {recentTopics.map((topic) => (
-                <Link
-                  key={topic.id}
-                  to={`/forum/topic/${topic.id}`}
-                  className="block bg-card/30 border border-white/5 hover:border-primary/30 p-4 transition-all group"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center space-x-2">
-                        {topic.is_pinned && <Pin className="w-4 h-4 text-yellow-500 flex-shrink-0" />}
-                        {topic.is_locked && <Lock className="w-4 h-4 text-red-500 flex-shrink-0" />}
-                        <h4 className="text-white group-hover:text-primary truncate">{topic.title}</h4>
                       </div>
-                      <div className="flex items-center space-x-3 mt-1 text-xs text-muted-foreground">
-                        <span className="text-primary">{topic.author_name}</span>
-                        <span>•</span>
-                        <span>{formatRelativeTime(topic.created_at)}</span>
-                        <span>•</span>
-                        <span>{topic.reply_count} replies</span>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                    );
+                  })
+                ) : (
+                  <div className="bg-card/30 border border-white/5 p-8 text-center">
+                    <p className="text-muted-foreground text-sm">No categories in this section yet</p>
                   </div>
-                </Link>
-              ))}
-            </div>
+                )}
+              </div>
+            ))}
           </div>
         )}
       </div>
@@ -358,8 +454,9 @@ export const ForumCategory = () => {
   const [topics, setTopics] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showNewTopic, setShowNewTopic] = useState(false);
-  const [newTopic, setNewTopic] = useState({ title: '', content: '' });
+  const [newTopic, setNewTopic] = useState({ title: '', content: '', tag: '' });
   const [submitting, setSubmitting] = useState(false);
+  const [filterTag, setFilterTag] = useState('all');
 
   useEffect(() => {
     fetchData();
@@ -392,9 +489,10 @@ export const ForumCategory = () => {
       await axios.post(`${API}/forum/topics`, {
         category_id: categoryId,
         title: newTopic.title,
-        content: newTopic.content
+        content: newTopic.content,
+        tag: newTopic.tag || null
       });
-      setNewTopic({ title: '', content: '' });
+      setNewTopic({ title: '', content: '', tag: '' });
       setShowNewTopic(false);
       fetchData();
     } catch (error) {
@@ -438,6 +536,20 @@ export const ForumCategory = () => {
       console.error('Failed to toggle lock', error);
     }
   };
+
+  const handleUpdateTopicTag = async (topicId, newTag) => {
+    try {
+      await axios.patch(`${API}/forum/topics/${topicId}/tag`, { tag: newTag });
+      fetchData();
+    } catch (error) {
+      console.error('Failed to update tag', error);
+    }
+  };
+
+  // Filter topics by tag
+  const filteredTopics = filterTag === 'all' 
+    ? topics 
+    : topics.filter(t => t.tag === filterTag);
 
   if (loading) {
     return (
@@ -494,6 +606,32 @@ export const ForumCategory = () => {
               <span className="hidden sm:inline">New Topic</span>
             </button>
           </div>
+          
+          {/* Tag Filters */}
+          {category.tags && category.tags.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-4">
+              <button
+                onClick={() => setFilterTag('all')}
+                className={`px-3 py-1.5 text-xs font-heading uppercase transition-all ${
+                  filterTag === 'all' ? 'bg-primary text-white' : 'bg-muted/30 text-muted-foreground hover:text-white'
+                }`}
+              >
+                All Topics
+              </button>
+              {category.tags.map((tag, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setFilterTag(tag)}
+                  className={`px-3 py-1.5 text-xs font-heading uppercase transition-all flex items-center space-x-1 ${
+                    filterTag === tag ? 'bg-primary text-white' : 'bg-muted/30 text-muted-foreground hover:text-white'
+                  }`}
+                >
+                  <Tag className="w-3 h-3" />
+                  <span>{tag}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -503,16 +641,33 @@ export const ForumCategory = () => {
           <div className="bg-card/50 border border-primary/50 p-6 mb-6">
             <h3 className="font-heading text-xl font-bold text-white mb-4">CREATE NEW TOPIC</h3>
             <form onSubmit={handleCreateTopic} className="space-y-4">
-              <div>
-                <label className="block text-sm text-muted-foreground uppercase tracking-wider mb-2">Title</label>
-                <input
-                  type="text"
-                  value={newTopic.title}
-                  onChange={(e) => setNewTopic({ ...newTopic, title: e.target.value })}
-                  className="w-full bg-muted/50 border border-white/10 px-4 py-3 text-white outline-none focus:border-primary"
-                  placeholder="What's on your mind?"
-                  required
-                />
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="md:col-span-2">
+                  <label className="block text-sm text-muted-foreground uppercase tracking-wider mb-2">Title</label>
+                  <input
+                    type="text"
+                    value={newTopic.title}
+                    onChange={(e) => setNewTopic({ ...newTopic, title: e.target.value })}
+                    className="w-full bg-muted/50 border border-white/10 px-4 py-3 text-white outline-none focus:border-primary"
+                    placeholder="What's on your mind?"
+                    required
+                  />
+                </div>
+                {category.tags && category.tags.length > 0 && (
+                  <div>
+                    <label className="block text-sm text-muted-foreground uppercase tracking-wider mb-2">Status Tag</label>
+                    <select
+                      value={newTopic.tag}
+                      onChange={(e) => setNewTopic({ ...newTopic, tag: e.target.value })}
+                      className="w-full bg-muted/50 border border-white/10 px-4 py-3 text-white outline-none focus:border-primary"
+                    >
+                      <option value="">Select tag...</option>
+                      {category.tags.map((tag, idx) => (
+                        <option key={idx} value={tag}>{tag}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-sm text-muted-foreground uppercase tracking-wider mb-2">Content</label>
@@ -545,7 +700,7 @@ export const ForumCategory = () => {
         )}
 
         {/* Topics List */}
-        {topics.length === 0 ? (
+        {filteredTopics.length === 0 ? (
           <div className="text-center py-16 bg-card/30 border border-white/10">
             <MessageSquare className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
             <p className="text-muted-foreground font-heading uppercase">No topics yet</p>
@@ -561,7 +716,7 @@ export const ForumCategory = () => {
               <div className="col-span-2">Last Reply</div>
             </div>
 
-            {topics.map((topic) => (
+            {filteredTopics.map((topic) => (
               <Link
                 key={topic.id}
                 to={`/forum/topic/${topic.id}`}
@@ -580,9 +735,15 @@ export const ForumCategory = () => {
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center space-x-2 mb-1">
+                        <div className="flex items-center space-x-2 mb-1 flex-wrap">
                           {topic.is_pinned && <Pin className="w-4 h-4 text-yellow-500 flex-shrink-0" />}
                           {topic.is_locked && <Lock className="w-4 h-4 text-red-500 flex-shrink-0" />}
+                          {topic.tag && (
+                            <span className="px-2 py-0.5 text-xs bg-primary/20 text-primary flex items-center space-x-1">
+                              <Tag className="w-3 h-3" />
+                              <span>{topic.tag}</span>
+                            </span>
+                          )}
                           <h3 className="font-heading text-white group-hover:text-primary transition-colors truncate">
                             {topic.title}
                           </h3>
@@ -595,22 +756,13 @@ export const ForumCategory = () => {
                           >
                             {topic.author_name}
                           </Link>
-                          {topic.author_role && (
-                            <span className={`px-1.5 py-0.5 text-xs uppercase ${
-                              topic.author_role === 'owner' ? 'bg-red-500/20 text-red-500' :
-                              topic.author_role === 'admin' ? 'bg-green-500/20 text-green-500' :
-                              'bg-muted text-muted-foreground'
-                            }`}>
-                              {topic.author_role}
-                            </span>
-                          )}
                           <span>•</span>
                           <span>{formatRelativeTime(topic.created_at)}</span>
                         </div>
                       </div>
                     </div>
                     
-                    {/* Admin Controls */}
+                    {/* Admin/Mod Controls */}
                     {isAdmin && (
                       <div className="flex items-center space-x-1 ml-13 mt-2">
                         <button
@@ -627,6 +779,19 @@ export const ForumCategory = () => {
                         >
                           <Lock className="w-4 h-4" />
                         </button>
+                        {category.tags && category.tags.length > 0 && (
+                          <select
+                            value={topic.tag || ''}
+                            onChange={(e) => { e.preventDefault(); e.stopPropagation(); handleUpdateTopicTag(topic.id, e.target.value); }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="ml-2 bg-muted/50 border border-white/10 px-2 py-1 text-xs text-white outline-none"
+                          >
+                            <option value="">No tag</option>
+                            {category.tags.map((tag, idx) => (
+                              <option key={idx} value={tag}>{tag}</option>
+                            ))}
+                          </select>
+                        )}
                         <button
                           onClick={(e) => handleDeleteTopic(topic.id, e)}
                           className="p-1.5 text-muted-foreground hover:text-red-500"
@@ -744,6 +909,7 @@ export const ForumTopic = () => {
     const colors = {
       owner: 'bg-red-500/20 text-red-500 border-red-500/50',
       admin: 'bg-green-500/20 text-green-500 border-green-500/50',
+      moderator: 'bg-blue-500/20 text-blue-500 border-blue-500/50',
       player: 'bg-muted text-muted-foreground border-white/10'
     };
     return (
@@ -789,9 +955,15 @@ export const ForumTopic = () => {
             <ArrowLeft className="w-4 h-4" />
             <span>Back</span>
           </button>
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-3 flex-wrap">
             {topic.is_pinned && <Pin className="w-5 h-5 text-yellow-500" />}
             {topic.is_locked && <Lock className="w-5 h-5 text-red-500" />}
+            {topic.tag && (
+              <span className="px-2 py-1 text-xs bg-primary/20 text-primary flex items-center space-x-1">
+                <Tag className="w-3 h-3" />
+                <span>{topic.tag}</span>
+              </span>
+            )}
             <h1 className="font-heading text-2xl md:text-3xl font-bold text-white">
               {topic.title}
             </h1>
@@ -864,9 +1036,6 @@ export const ForumTopic = () => {
                       <div className="ml-4 md:ml-0 md:mt-1">
                         {getRoleBadge(reply.author_role)}
                       </div>
-                      <p className="text-xs text-muted-foreground mt-1 hidden md:block">
-                        {reply.author_post_count || 0} posts
-                      </p>
                     </div>
                     
                     {/* Content */}
