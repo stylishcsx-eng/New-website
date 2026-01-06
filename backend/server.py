@@ -929,6 +929,9 @@ async def get_forum_categories():
     categories = await db.forum_categories.find({}, {"_id": 0}).sort("order", 1).to_list(100)
     
     for cat in categories:
+        # Ensure order exists
+        if "order" not in cat:
+            cat["order"] = 0
         cat["topic_count"] = await db.forum_topics.count_documents({"category_id": cat["id"]})
         cat["post_count"] = await db.forum_replies.count_documents({"category_id": cat["id"]})
         
