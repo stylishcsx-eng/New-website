@@ -139,7 +139,20 @@ export const Navigation = () => {
                   </Link>
                 )}
                 <div className="flex items-center space-x-2 text-sm">
-                  <span className="text-muted-foreground">{user?.nickname}</span>
+                  <Link
+                    to={`/profile/${user?.id}`}
+                    className="flex items-center space-x-2 px-3 py-2 text-muted-foreground hover:text-primary transition-colors"
+                    title="My Profile"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden border border-primary/50">
+                      {user?.discord_avatar ? (
+                        <img src={user.discord_avatar} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-primary font-bold text-sm">{user?.nickname?.charAt(0).toUpperCase()}</span>
+                      )}
+                    </div>
+                    <span>{user?.nickname}</span>
+                  </Link>
                   <button
                     onClick={logout}
                     data-testid="nav-logout"
