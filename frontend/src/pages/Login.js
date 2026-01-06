@@ -132,17 +132,6 @@ export const Login = () => {
             Register here
           </Link>
         </p>
-
-        {/* Admin Login Link */}
-        <div className="mt-8 pt-6 border-t border-white/10 text-center">
-          <p className="text-muted-foreground text-sm mb-2">Are you an admin?</p>
-          <Link
-            to="/admin-login"
-            className="text-primary hover:underline text-sm font-heading uppercase tracking-wider"
-          >
-            Admin Panel Login
-          </Link>
-        </div>
       </div>
     </div>
   );
