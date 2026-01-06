@@ -761,6 +761,13 @@ async def get_players(search: Optional[str] = None):
     players = await db.players.find(query, {"_id": 0}).sort("kills", -1).to_list(100)
     return players
 
+@api_router.get("/players/{steamid}", response_model=PlayerResponse)
+async def get_player(steamid: str):
+    player = await db.players.find_one({"steamid": steamid}, {"_id": 0})
+    if not player:
+        raise HTTPException(status_code=404, detail="Player not found")
+    return player
+
 @api_router.get("/rankings/top", response_model=List[PlayerResponse])
 async def get_top_players(limit: int = 15):
     players = await db.players.find({}, {"_id": 0}).sort("kills", -1).to_list(limit)
