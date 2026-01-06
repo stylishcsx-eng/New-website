@@ -56,14 +56,23 @@ export const AdminPanel = () => {
     }
   };
 
-  const handleApplicationStatus = async (appId, status) => {
+  const handleApplicationStatus = async (appId, status, reason = '') => {
     try {
-      await axios.patch(`${API}/admin-applications/${appId}`, { status });
+      await axios.patch(`${API}/admin-applications/${appId}`, { status, admin_reason: reason || null });
       toast.success(`Application ${status}! Player will be notified.`);
+      setReviewingApp(null);
+      setReviewStatus('');
+      setReviewReason('');
       fetchData();
     } catch (error) {
       toast.error('Failed to update application');
     }
+  };
+
+  const openReviewModal = (app, status) => {
+    setReviewingApp(app);
+    setReviewStatus(status);
+    setReviewReason('');
   };
 
   const handleDeleteApplication = async (appId) => {
