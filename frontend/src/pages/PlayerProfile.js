@@ -64,7 +64,7 @@ export const PlayerProfile = () => {
   const [visitors, setVisitors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
-  const [editData, setEditData] = useState({ bio: '', steamid: '', birthday: '', location: '' });
+  const [editData, setEditData] = useState({ bio: '', steamid: '', birthday: '', location: '', avatar_url: '' });
   const [activeTab, setActiveTab] = useState('activity');
 
   const isOwnProfile = currentUser?.id === userId;
