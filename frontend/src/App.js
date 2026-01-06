@@ -16,7 +16,8 @@ import { AuthCallback } from './pages/AuthCallback';
 import { AdminPanel } from './pages/AdminPanel';
 import { AdminLogin } from './pages/AdminLogin';
 import { Team } from './pages/Team';
-import { Forum, ForumTopic } from './pages/Forum';
+import { Forum, ForumCategory, ForumTopic } from './pages/Forum';
+import { PlayerProfile } from './pages/PlayerProfile';
 import { Toaster } from './components/ui/sonner';
 
 function App() {
@@ -38,7 +39,9 @@ function App() {
             <Route path="/admin-login" element={<AdminLogin />} />
             <Route path="/team" element={<Team />} />
             <Route path="/forum" element={<Forum />} />
-            <Route path="/forum/topic/:id" element={<ForumTopic />} />
+            <Route path="/forum/category/:categoryId" element={<ForumCategory />} />
+            <Route path="/forum/topic/:topicId" element={<ForumTopic />} />
+            <Route path="/profile/:userId" element={<PlayerProfile />} />
             <Route 
               path="/admin" 
               element={
