@@ -1187,6 +1187,9 @@ async def create_forum_topic(data: ForumTopicCreate, user = Depends(require_auth
     if not category:
         raise HTTPException(status_code=404, detail="Category not found")
     
+    # Limit media URLs to 5
+    media_urls = (data.media_urls or [])[:5]
+    
     topic = {
         "id": str(uuid.uuid4()),
         "category_id": data.category_id,
@@ -1194,13 +1197,14 @@ async def create_forum_topic(data: ForumTopicCreate, user = Depends(require_auth
         "content": data.content,
         "author_id": user["id"],
         "author_name": user["nickname"],
-        "author_avatar": user.get("discord_avatar"),
+        "author_avatar": user.get("discord_avatar") or user.get("avatar_url"),
         "author_role": user.get("role"),
         "reply_count": 0,
         "view_count": 0,
         "is_pinned": False,
         "is_locked": False,
         "tag": data.tag,
+        "media_urls": media_urls,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "last_reply_at": datetime.now(timezone.utc).isoformat(),
         "last_reply_by": None
