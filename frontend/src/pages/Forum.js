@@ -523,9 +523,11 @@ export const ForumCategory = () => {
         category_id: categoryId,
         title: newTopic.title,
         content: newTopic.content,
-        tag: newTopic.tag || null
+        tag: newTopic.tag || null,
+        media_urls: newTopic.media_urls
       });
-      setNewTopic({ title: '', content: '', tag: '' });
+      setNewTopic({ title: '', content: '', tag: '', media_urls: [] });
+      setMediaInput('');
       setShowNewTopic(false);
       fetchData();
     } catch (error) {
