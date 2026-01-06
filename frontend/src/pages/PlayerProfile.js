@@ -312,6 +312,36 @@ export const PlayerProfile = () => {
                 <span>Edit Profile</span>
               </h2>
               <div className="space-y-4">
+                {/* Avatar Preview & URL */}
+                <div>
+                  <label className="block text-xs text-muted-foreground uppercase mb-2">Profile Picture</label>
+                  <div className="flex items-center space-x-4 mb-2">
+                    <div className="w-16 h-16 rounded-full bg-muted overflow-hidden border-2 border-primary/50">
+                      {editData.avatar_url || profile.discord_avatar ? (
+                        <img 
+                          src={editData.avatar_url || profile.discord_avatar} 
+                          alt="" 
+                          className="w-full h-full object-cover"
+                          onError={(e) => e.target.style.display = 'none'}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-primary/20">
+                          <span className="text-primary text-2xl font-bold">{profile.nickname?.charAt(0)}</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs text-muted-foreground mb-1">Enter an image URL for your profile picture</p>
+                    </div>
+                  </div>
+                  <input
+                    type="url"
+                    value={editData.avatar_url}
+                    onChange={(e) => setEditData({...editData, avatar_url: e.target.value})}
+                    className="w-full bg-muted/50 border border-white/10 px-4 py-3 text-white outline-none focus:border-primary text-sm"
+                    placeholder="https://example.com/your-image.png"
+                  />
+                </div>
                 <div>
                   <label className="block text-xs text-muted-foreground uppercase mb-2">Bio</label>
                   <textarea
