@@ -1117,6 +1117,7 @@ async def create_forum_topic(data: ForumTopicCreate, user = Depends(require_auth
         "view_count": 0,
         "is_pinned": False,
         "is_locked": False,
+        "tag": data.tag,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "last_reply_at": datetime.now(timezone.utc).isoformat(),
         "last_reply_by": None
