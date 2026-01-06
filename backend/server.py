@@ -126,6 +126,7 @@ class AdminApplicationCreate(BaseModel):
     age: int
     experience: str
     reason: str
+    admin_commands_knowledge: str  # "bad", "good", "excellent"
 
 class AdminApplicationResponse(BaseModel):
     id: str
@@ -135,6 +136,7 @@ class AdminApplicationResponse(BaseModel):
     age: int
     experience: str
     reason: str
+    admin_commands_knowledge: Optional[str] = "good"
     status: str
     admin_reason: Optional[str] = None
     submitted_at: str
