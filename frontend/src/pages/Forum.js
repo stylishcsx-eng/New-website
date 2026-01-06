@@ -999,9 +999,12 @@ export const ForumTopic = () => {
     try {
       await axios.post(`${API}/forum/replies`, {
         topic_id: topicId,
-        content: newReply
+        content: newReply,
+        media_urls: replyMediaUrls
       });
       setNewReply('');
+      setReplyMediaUrls([]);
+      setMediaInput('');
       fetchData();
     } catch (error) {
       console.error('Failed to post reply', error);
@@ -1009,6 +1012,61 @@ export const ForumTopic = () => {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  // Render media attachments
+  const renderMedia = (mediaUrls) => {
+    if (!mediaUrls || mediaUrls.length === 0) return null;
+    
+    return (
+      <div className="mt-4 space-y-3">
+        {mediaUrls.map((url, idx) => {
+          const type = getMediaType(url);
+          
+          if (type === 'video') {
+            return (
+              <video 
+                key={idx} 
+                controls 
+                className="max-w-full max-h-96 rounded border border-white/10"
+                preload="metadata"
+              >
+                <source src={url} type="video/mp4" />
+                Your browser does not support videos.
+              </video>
+            );
+          }
+          
+          if (type === 'youtube') {
+            const embedUrl = getYouTubeEmbed(url);
+            if (embedUrl) {
+              return (
+                <div key={idx} className="relative w-full max-w-lg aspect-video">
+                  <iframe
+                    src={embedUrl}
+                    className="absolute inset-0 w-full h-full rounded border border-white/10"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                </div>
+              );
+            }
+          }
+          
+          // Image or GIF
+          return (
+            <a key={idx} href={url} target="_blank" rel="noopener noreferrer">
+              <img 
+                src={url} 
+                alt="Attachment" 
+                className="max-w-full max-h-96 rounded border border-white/10 hover:opacity-90 transition-opacity cursor-pointer"
+                onError={(e) => e.target.style.display = 'none'}
+              />
+            </a>
+          );
+        })}
+      </div>
+    );
   };
 
   const handleDeleteReply = async (replyId) => {
