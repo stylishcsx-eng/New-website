@@ -380,13 +380,25 @@ async def init_default_team():
     count = await db.team_members.count_documents({})
     if count == 0:
         members = [
-            {"id": str(uuid.uuid4()), "name": "Stylish", "role": "Owner", "discord_id": None, "steamid": "STEAM_0:0:171538078", "avatar": "https://customer-assets.emergentagent.com/job_cs-server-sync/artifacts/dy6oo11y_ChatGPT%20Image%20Dec%2020%2C%202025%2C%2006_47_46%20PM.png", "description": "Server Founder & Developer", "order": 1},
-            {"id": str(uuid.uuid4()), "name": "Nico", "role": "Owner", "discord_id": None, "steamid": None, "avatar": None, "description": "Server Owner", "order": 2},
-            {"id": str(uuid.uuid4()), "name": "Angry.exe", "role": "Owner", "discord_id": None, "steamid": None, "avatar": None, "description": "Server Owner", "order": 3},
-            {"id": str(uuid.uuid4()), "name": "Pak", "role": "Owner", "discord_id": None, "steamid": None, "avatar": None, "description": "Server Owner", "order": 4},
+            {"id": str(uuid.uuid4()), "name": "Stylish", "role": "Owner", "role_type": "owner", "user_id": None, "discord_id": None, "steamid": "STEAM_0:0:171538078", "avatar": "https://customer-assets.emergentagent.com/job_cs-server-sync/artifacts/dy6oo11y_ChatGPT%20Image%20Dec%2020%2C%202025%2C%2006_47_46%20PM.png", "description": "Server Founder & Developer", "order": 1},
+            {"id": str(uuid.uuid4()), "name": "Nico", "role": "Owner", "role_type": "owner", "user_id": None, "discord_id": None, "steamid": None, "avatar": None, "description": "Server Owner", "order": 2},
+            {"id": str(uuid.uuid4()), "name": "Angry.exe", "role": "Owner", "role_type": "owner", "user_id": None, "discord_id": None, "steamid": None, "avatar": None, "description": "Server Owner", "order": 3},
+            {"id": str(uuid.uuid4()), "name": "Pak", "role": "Owner", "role_type": "owner", "user_id": None, "discord_id": None, "steamid": None, "avatar": None, "description": "Server Owner", "order": 4},
         ]
         await db.team_members.insert_many(members)
         logging.info("Default team members created")
+    
+    # Initialize default team roles
+    role_count = await db.team_roles.count_documents({})
+    if role_count == 0:
+        default_roles = [
+            {"id": str(uuid.uuid4()), "name": "Owner", "color": "#ef4444", "order": 1},  # Red
+            {"id": str(uuid.uuid4()), "name": "Admin", "color": "#22c55e", "order": 2},  # Green
+            {"id": str(uuid.uuid4()), "name": "Moderator", "color": "#3b82f6", "order": 3},  # Blue
+            {"id": str(uuid.uuid4()), "name": "Member", "color": "#a855f7", "order": 4},  # Purple
+        ]
+        await db.team_roles.insert_many(default_roles)
+        logging.info("Default team roles created")
 
 # ==================== SERVER STATUS ====================
 
