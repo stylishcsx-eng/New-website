@@ -309,6 +309,7 @@ class ProfileUpdate(BaseModel):
     steamid: Optional[str] = None
     birthday: Optional[str] = None
     location: Optional[str] = None
+    avatar_url: Optional[str] = None
 
 class UserProfileResponse(BaseModel):
     id: str
