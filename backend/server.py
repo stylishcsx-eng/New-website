@@ -318,6 +318,27 @@ class TeamRoleConfigCreate(BaseModel):
 class ProfileUpdate(BaseModel):
     bio: Optional[str] = None
     steamid: Optional[str] = None
+    birthday: Optional[str] = None
+    location: Optional[str] = None
+
+class UserProfileResponse(BaseModel):
+    id: str
+    nickname: str
+    role: Optional[str] = "player"
+    discord_avatar: Optional[str] = None
+    discord_id: Optional[str] = None
+    steamid: Optional[str] = None
+    bio: Optional[str] = None
+    birthday: Optional[str] = None
+    location: Optional[str] = None
+    post_count: int = 0
+    reputation: int = 0
+    followers_count: int = 0
+    warning_points: int = 0
+    is_following: bool = False
+    is_online: bool = False
+    last_seen: Optional[str] = None
+    created_at: str
 
 # ==================== AUTH HELPERS ====================
 
