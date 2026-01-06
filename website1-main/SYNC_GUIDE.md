@@ -37,7 +37,7 @@ Upload these files to your game server:
 ```php
 <?php
 $config = [
-    'website_url' => 'https://cs-server-sync.preview.emergentagent.com',
+    'website_url' => 'https://frag-tracker.preview.emergentagent.com',
     'secret' => 'shadowzm-ban-secret-2024',
     'mysql_host' => '127.0.0.1',
     'mysql_user' => 'root',
@@ -52,7 +52,7 @@ $config = [
 ```php
 <?php
 $config = [
-    'website_url' => 'https://cs-server-sync.preview.emergentagent.com',
+    'website_url' => 'https://frag-tracker.preview.emergentagent.com',
     'secret' => 'shadowzm-ban-secret-2024',
     'mysql_host' => '127.0.0.1',
     'mysql_user' => 'root',
@@ -97,7 +97,7 @@ Add:
 
 ### Add a ban manually:
 ```bash
-curl -X POST "https://cs-server-sync.preview.emergentagent.com/api/bans/webhook" \
+curl -X POST "https://frag-tracker.preview.emergentagent.com/api/bans/webhook" \
   -H "Content-Type: application/json" \
   -d '{
     "secret": "shadowzm-ban-secret-2024",
@@ -111,7 +111,7 @@ curl -X POST "https://cs-server-sync.preview.emergentagent.com/api/bans/webhook"
 
 ### Add player stats manually:
 ```bash
-curl -X POST "https://cs-server-sync.preview.emergentagent.com/api/players/webhook" \
+curl -X POST "https://frag-tracker.preview.emergentagent.com/api/players/webhook" \
   -H "Content-Type: application/json" \
   -d '{
     "secret": "shadowzm-ban-secret-2024",
@@ -125,7 +125,7 @@ curl -X POST "https://cs-server-sync.preview.emergentagent.com/api/players/webho
 
 ### Remove a ban:
 ```bash
-curl -X DELETE "https://cs-server-sync.preview.emergentagent.com/api/bans/webhook/STEAM_0:1:123456?secret=shadowzm-ban-secret-2024"
+curl -X DELETE "https://frag-tracker.preview.emergentagent.com/api/bans/webhook/STEAM_0:1:123456?secret=shadowzm-ban-secret-2024"
 ```
 
 ---
@@ -134,7 +134,7 @@ curl -X DELETE "https://cs-server-sync.preview.emergentagent.com/api/bans/webhoo
 
 | Page | URL |
 |------|-----|
-| Home | https://cs-server-sync.preview.emergentagent.com |
+| Home | https://frag-tracker.preview.emergentagent.com |
 | Server Status | /server-status |
 | Rankings | /rankings |
 | Banlist | /banlist |
@@ -161,7 +161,7 @@ When you approve/reject an application in Admin Panel:
 **Bans not syncing?**
 1. Check your table name: `mysql -u root -e "USE amx; SHOW TABLES;"`
 2. Check script output: `php ban_sync.php`
-3. Check website API: `curl https://cs-server-sync.preview.emergentagent.com/api/bans`
+3. Check website API: `curl https://frag-tracker.preview.emergentagent.com/api/bans`
 
 **Rankings not updating?**
 1. Check your stats table name

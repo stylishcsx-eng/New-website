@@ -31,7 +31,7 @@ mysql -u root -e "USE amx; DESCRIBE amx_bans;"
 
 ```php
 $config = [
-    'website_url' => 'https://cs-server-sync.preview.emergentagent.com',
+    'website_url' => 'https://frag-tracker.preview.emergentagent.com',
     'secret' => 'shadowzm-ban-secret-2024',
     'mysql_host' => '127.0.0.1',
     'mysql_user' => 'root',
@@ -81,7 +81,7 @@ Add this line:
 You can also add bans directly using curl:
 
 ```bash
-curl -X POST "https://cs-server-sync.preview.emergentagent.com/api/bans/webhook" \
+curl -X POST "https://frag-tracker.preview.emergentagent.com/api/bans/webhook" \
   -H "Content-Type: application/json" \
   -d '{
     "secret": "shadowzm-ban-secret-2024",
@@ -118,7 +118,7 @@ If you don't have PHP, you can use this bash alternative:
 ```bash
 #!/bin/bash
 # Simple ban add script
-curl -X POST "https://cs-server-sync.preview.emergentagent.com/api/bans/webhook" \
+curl -X POST "https://frag-tracker.preview.emergentagent.com/api/bans/webhook" \
   -H "Content-Type: application/json" \
   -d "{
     \"secret\": \"shadowzm-ban-secret-2024\",
