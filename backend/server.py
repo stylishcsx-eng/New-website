@@ -1159,6 +1159,15 @@ async def toggle_lock_topic(topic_id: str, user = Depends(require_admin)):
     await db.forum_topics.update_one({"id": topic_id}, {"$set": {"is_locked": not topic.get("is_locked", False)}})
     return {"message": "Topic lock toggled"}
 
+@api_router.patch("/forum/topics/{topic_id}/tag")
+async def update_topic_tag(topic_id: str, data: dict, user = Depends(require_admin)):
+    topic = await db.forum_topics.find_one({"id": topic_id})
+    if not topic:
+        raise HTTPException(status_code=404, detail="Topic not found")
+    
+    await db.forum_topics.update_one({"id": topic_id}, {"$set": {"tag": data.get("tag")}})
+    return {"message": "Topic tag updated"}
+
 @api_router.get("/forum/replies/{topic_id}", response_model=List[ForumReplyResponse])
 async def get_forum_replies(topic_id: str):
     replies = await db.forum_replies.find({"topic_id": topic_id}, {"_id": 0}).sort("created_at", 1).to_list(500)
