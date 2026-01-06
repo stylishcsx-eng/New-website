@@ -951,6 +951,83 @@ async def delete_notification(notif_id: str, user = Depends(require_auth)):
 
 # ==================== FORUM ROUTES ====================
 
+# Forum Sections
+@api_router.get("/forum/sections", response_model=List[ForumSectionResponse])
+async def get_forum_sections():
+    sections = await db.forum_sections.find({}, {"_id": 0}).sort("order", 1).to_list(100)
+    
+    # Get categories for each section
+    for section in sections:
+        categories = await db.forum_categories.find({"section_id": section["id"]}, {"_id": 0}).sort("order", 1).to_list(100)
+        for cat in categories:
+            if "order" not in cat:
+                cat["order"] = 0
+            if "tags" not in cat:
+                cat["tags"] = []
+            cat["topic_count"] = await db.forum_topics.count_documents({"category_id": cat["id"]})
+            cat["post_count"] = await db.forum_replies.count_documents({"category_id": cat["id"]})
+            
+            # Get last post
+            last_topic = await db.forum_topics.find({"category_id": cat["id"]}).sort("last_reply_at", -1).limit(1).to_list(1)
+            if last_topic:
+                cat["last_post"] = {
+                    "topic_id": last_topic[0]["id"],
+                    "topic_title": last_topic[0]["title"],
+                    "author": last_topic[0].get("last_reply_by") or last_topic[0]["author_name"],
+                    "date": last_topic[0].get("last_reply_at") or last_topic[0]["created_at"]
+                }
+        section["categories"] = categories
+    
+    # Also get categories without section (legacy)
+    orphan_categories = await db.forum_categories.find({"section_id": {"$exists": False}}, {"_id": 0}).sort("order", 1).to_list(100)
+    if orphan_categories:
+        for cat in orphan_categories:
+            if "order" not in cat:
+                cat["order"] = 0
+            if "tags" not in cat:
+                cat["tags"] = []
+            cat["topic_count"] = await db.forum_topics.count_documents({"category_id": cat["id"]})
+            cat["post_count"] = await db.forum_replies.count_documents({"category_id": cat["id"]})
+            last_topic = await db.forum_topics.find({"category_id": cat["id"]}).sort("last_reply_at", -1).limit(1).to_list(1)
+            if last_topic:
+                cat["last_post"] = {
+                    "topic_id": last_topic[0]["id"],
+                    "topic_title": last_topic[0]["title"],
+                    "author": last_topic[0].get("last_reply_by") or last_topic[0]["author_name"],
+                    "date": last_topic[0].get("last_reply_at") or last_topic[0]["created_at"]
+                }
+        sections.append({
+            "id": "legacy",
+            "name": "Community",
+            "description": "",
+            "icon": "MessageSquare",
+            "order": 999,
+            "categories": orphan_categories
+        })
+    
+    return sections
+
+@api_router.post("/forum/sections", response_model=ForumSectionResponse)
+async def create_forum_section(data: ForumSectionCreate, user = Depends(require_admin)):
+    section = {
+        "id": str(uuid.uuid4()),
+        **data.model_dump(),
+        "categories": []
+    }
+    await db.forum_sections.insert_one(section)
+    return section
+
+@api_router.delete("/forum/sections/{section_id}")
+async def delete_forum_section(section_id: str, user = Depends(require_admin)):
+    # Delete all categories and their content in this section
+    categories = await db.forum_categories.find({"section_id": section_id}).to_list(100)
+    for cat in categories:
+        await db.forum_topics.delete_many({"category_id": cat["id"]})
+        await db.forum_replies.delete_many({"category_id": cat["id"]})
+    await db.forum_categories.delete_many({"section_id": section_id})
+    await db.forum_sections.delete_one({"id": section_id})
+    return {"message": "Section and all content deleted"}
+
 @api_router.get("/forum/categories", response_model=List[ForumCategoryResponse])
 async def get_forum_categories():
     categories = await db.forum_categories.find({}, {"_id": 0}).sort("order", 1).to_list(100)
@@ -959,6 +1036,8 @@ async def get_forum_categories():
         # Ensure order exists
         if "order" not in cat:
             cat["order"] = 0
+        if "tags" not in cat:
+            cat["tags"] = []
         cat["topic_count"] = await db.forum_topics.count_documents({"category_id": cat["id"]})
         cat["post_count"] = await db.forum_replies.count_documents({"category_id": cat["id"]})
         
