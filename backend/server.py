@@ -606,7 +606,7 @@ async def admin_login(data: AdminLogin):
 # ==================== USER PROFILE ROUTES ====================
 
 @api_router.get("/users/{user_id}/profile", response_model=UserProfileResponse)
-async def get_user_profile(user_id: str):
+async def get_user_profile(user_id: str, request: Request = None):
     user = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0, "email": 0})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -616,6 +616,21 @@ async def get_user_profile(user_id: str):
     topic_count = await db.forum_topics.count_documents({"author_id": user_id})
     user["post_count"] = post_count + topic_count
     user["reputation"] = user.get("reputation", 0)
+    user["followers_count"] = await db.user_follows.count_documents({"following_id": user_id})
+    user["warning_points"] = user.get("warning_points", 0)
+    
+    # Check if request user is following this profile
+    auth_header = request.headers.get("Authorization") if request else None
+    if auth_header and auth_header.startswith("Bearer "):
+        try:
+            token = auth_header.split(" ")[1]
+            payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+            follow = await db.user_follows.find_one({"follower_id": payload["user_id"], "following_id": user_id})
+            user["is_following"] = follow is not None
+        except:
+            user["is_following"] = False
+    else:
+        user["is_following"] = False
     
     return user
 
@@ -623,6 +638,12 @@ async def get_user_profile(user_id: str):
 async def get_user_posts(user_id: str, limit: int = 20):
     topics = await db.forum_topics.find({"author_id": user_id}, {"_id": 0}).sort("created_at", -1).to_list(limit)
     replies = await db.forum_replies.find({"author_id": user_id}, {"_id": 0}).sort("created_at", -1).to_list(limit)
+    
+    # For replies, get the topic title
+    for r in replies:
+        if r.get("topic_id"):
+            topic = await db.forum_topics.find_one({"id": r["topic_id"]}, {"title": 1})
+            r["topic_title"] = topic["title"] if topic else "Unknown"
     
     # Combine and sort
     all_posts = []
@@ -635,6 +656,52 @@ async def get_user_posts(user_id: str, limit: int = 20):
     
     all_posts.sort(key=lambda x: x.get("created_at", ""), reverse=True)
     return all_posts[:limit]
+
+@api_router.get("/users/{user_id}/visitors")
+async def get_profile_visitors(user_id: str, limit: int = 10):
+    visitors = await db.profile_visits.find({"visited_id": user_id}, {"_id": 0}).sort("visited_at", -1).limit(limit).to_list(limit)
+    result = []
+    for v in visitors:
+        visitor = await db.users.find_one({"id": v["visitor_id"]}, {"id": 1, "nickname": 1, "discord_avatar": 1})
+        if visitor:
+            result.append({
+                "id": visitor["id"],
+                "nickname": visitor["nickname"],
+                "avatar": visitor.get("discord_avatar"),
+                "visited_at": v["visited_at"]
+            })
+    return result
+
+@api_router.post("/users/{user_id}/visit")
+async def record_profile_visit(user_id: str, user = Depends(require_auth)):
+    if user["id"] == user_id:
+        return {"message": "Cannot visit own profile"}
+    
+    # Update or insert visit record
+    await db.profile_visits.update_one(
+        {"visitor_id": user["id"], "visited_id": user_id},
+        {"$set": {"visited_at": datetime.now(timezone.utc).isoformat()}},
+        upsert=True
+    )
+    return {"message": "Visit recorded"}
+
+@api_router.post("/users/{user_id}/follow")
+async def toggle_follow(user_id: str, user = Depends(require_auth)):
+    if user["id"] == user_id:
+        raise HTTPException(status_code=400, detail="Cannot follow yourself")
+    
+    existing = await db.user_follows.find_one({"follower_id": user["id"], "following_id": user_id})
+    if existing:
+        await db.user_follows.delete_one({"follower_id": user["id"], "following_id": user_id})
+        return {"message": "Unfollowed", "is_following": False}
+    else:
+        await db.user_follows.insert_one({
+            "id": str(uuid.uuid4()),
+            "follower_id": user["id"],
+            "following_id": user_id,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+        return {"message": "Following", "is_following": True}
 
 @api_router.patch("/users/profile")
 async def update_profile(data: ProfileUpdate, user = Depends(require_auth)):
