@@ -403,6 +403,56 @@ export const AdminPanel = () => {
           </div>
         ) : (
           <div>
+            {/* Application Review Modal */}
+            {reviewingApp && (
+              <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+                <div className="bg-card border border-white/10 p-6 w-full max-w-md">
+                  <h2 className="font-heading text-2xl font-bold text-white uppercase mb-6 flex items-center space-x-2">
+                    {reviewStatus === 'accepted' ? (
+                      <Check className="w-6 h-6 text-green-500" />
+                    ) : (
+                      <X className="w-6 h-6 text-red-500" />
+                    )}
+                    <span>{reviewStatus === 'accepted' ? 'Approve' : 'Reject'} Application</span>
+                  </h2>
+                  <div className="mb-4">
+                    <p className="text-muted-foreground">
+                      {reviewStatus === 'accepted' ? 'Approving' : 'Rejecting'} application from <strong className="text-white">{reviewingApp.nickname}</strong>
+                    </p>
+                  </div>
+                  <div className="mb-6">
+                    <label className="block text-xs text-muted-foreground uppercase mb-2">
+                      Reason (optional - will be sent to applicant)
+                    </label>
+                    <textarea
+                      value={reviewReason}
+                      onChange={(e) => setReviewReason(e.target.value)}
+                      className="w-full bg-muted/50 border border-white/10 px-4 py-3 text-white outline-none focus:border-primary h-24"
+                      placeholder={reviewStatus === 'accepted' ? 'Welcome to the team!' : 'Please explain why...'}
+                    />
+                  </div>
+                  <div className="flex space-x-3">
+                    <button
+                      onClick={() => handleApplicationStatus(reviewingApp.id, reviewStatus, reviewReason)}
+                      className={`flex-1 py-3 font-heading uppercase ${
+                        reviewStatus === 'accepted'
+                          ? 'bg-green-500 hover:bg-green-600 text-white'
+                          : 'bg-red-500 hover:bg-red-600 text-white'
+                      }`}
+                    >
+                      Confirm {reviewStatus === 'accepted' ? 'Approval' : 'Rejection'}
+                    </button>
+                    <button
+                      onClick={() => { setReviewingApp(null); setReviewReason(''); }}
+                      className="flex-1 bg-muted/30 hover:bg-muted/50 text-white border border-white/10 py-3 font-heading uppercase"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Applications Tab */}
             {activeTab === 'applications' && (
               <div className="space-y-4">
@@ -433,7 +483,7 @@ export const AdminPanel = () => {
                         <div className="flex items-center space-x-2">
                           <span className={`px-3 py-1 text-xs font-heading uppercase tracking-wider ${
                             app.status === 'pending' ? 'bg-yellow-900/30 text-yellow-500 border border-yellow-500/50' :
-                            app.status === 'approved' ? 'bg-green-900/30 text-green-500 border border-green-500/50' :
+                            app.status === 'accepted' ? 'bg-green-900/30 text-green-500 border border-green-500/50' :
                             'bg-red-900/30 text-red-500 border border-red-500/50'
                           }`}>
                             {app.status}
@@ -452,6 +502,22 @@ export const AdminPanel = () => {
                           <p className="text-xs text-muted-foreground uppercase mb-1">Submitted</p>
                           <p className="text-white font-mono text-xs">{format(new Date(app.submitted_at), 'MMM dd, yyyy HH:mm')}</p>
                         </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground uppercase mb-1">Admin Commands</p>
+                          <span className={`px-2 py-0.5 text-xs font-heading uppercase ${
+                            app.admin_commands_knowledge === 'excellent' ? 'bg-green-500/20 text-green-500' :
+                            app.admin_commands_knowledge === 'good' ? 'bg-yellow-500/20 text-yellow-500' :
+                            'bg-red-500/20 text-red-500'
+                          }`}>
+                            {app.admin_commands_knowledge || 'N/A'}
+                          </span>
+                        </div>
+                        {app.reviewed_by && (
+                          <div>
+                            <p className="text-xs text-muted-foreground uppercase mb-1">Reviewed By</p>
+                            <p className="text-white">{app.reviewed_by}</p>
+                          </div>
+                        )}
                       </div>
                       <div className="mb-4">
                         <p className="text-xs text-muted-foreground uppercase mb-2">Experience</p>
@@ -461,12 +527,22 @@ export const AdminPanel = () => {
                         <p className="text-xs text-muted-foreground uppercase mb-2">Reason</p>
                         <p className="text-foreground text-sm bg-muted/30 p-3">{app.reason}</p>
                       </div>
+                      {app.admin_reason && (
+                        <div className="mb-4">
+                          <p className="text-xs text-muted-foreground uppercase mb-2">Admin Response</p>
+                          <p className={`text-sm bg-muted/30 p-3 border-l-2 ${
+                            app.status === 'accepted' ? 'border-green-500 text-green-400' : 'border-red-500 text-red-400'
+                          }`}>
+                            {app.admin_reason}
+                          </p>
+                        </div>
+                      )}
                       {app.status === 'pending' && (
                         <div className="flex space-x-3 pt-4 border-t border-white/10">
-                          <button onClick={() => handleApplicationStatus(app.id, 'approved')} className="flex items-center space-x-2 bg-green-900/30 hover:bg-green-900/50 text-green-500 border border-green-500/50 px-4 py-2">
+                          <button onClick={() => openReviewModal(app, 'accepted')} className="flex items-center space-x-2 bg-green-900/30 hover:bg-green-900/50 text-green-500 border border-green-500/50 px-4 py-2">
                             <Check className="w-4 h-4" /><span className="font-heading uppercase text-sm">Approve</span>
                           </button>
-                          <button onClick={() => handleApplicationStatus(app.id, 'rejected')} className="flex items-center space-x-2 bg-red-900/30 hover:bg-red-900/50 text-red-500 border border-red-500/50 px-4 py-2">
+                          <button onClick={() => openReviewModal(app, 'rejected')} className="flex items-center space-x-2 bg-red-900/30 hover:bg-red-900/50 text-red-500 border border-red-500/50 px-4 py-2">
                             <X className="w-4 h-4" /><span className="font-heading uppercase text-sm">Reject</span>
                           </button>
                         </div>
