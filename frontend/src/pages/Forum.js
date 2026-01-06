@@ -939,7 +939,36 @@ export const ForumTopic = () => {
   const [replies, setReplies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [newReply, setNewReply] = useState('');
+  const [replyMediaUrls, setReplyMediaUrls] = useState([]);
+  const [mediaInput, setMediaInput] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // Helper to detect media type
+  const getMediaType = (url) => {
+    const lower = url.toLowerCase();
+    if (lower.match(/\.(mp4|webm|ogg|mov)(\?.*)?$/)) return 'video';
+    if (lower.match(/\.(gif)(\?.*)?$/)) return 'gif';
+    if (lower.match(/\.(jpg|jpeg|png|webp|bmp)(\?.*)?$/)) return 'image';
+    if (lower.includes('youtube.com') || lower.includes('youtu.be')) return 'youtube';
+    return 'image';
+  };
+
+  // Get YouTube embed URL
+  const getYouTubeEmbed = (url) => {
+    const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
+    return match ? `https://www.youtube.com/embed/${match[1]}` : null;
+  };
+
+  const addMediaUrl = () => {
+    if (mediaInput.trim() && replyMediaUrls.length < 5) {
+      setReplyMediaUrls([...replyMediaUrls, mediaInput.trim()]);
+      setMediaInput('');
+    }
+  };
+
+  const removeMediaUrl = (index) => {
+    setReplyMediaUrls(replyMediaUrls.filter((_, i) => i !== index));
+  };
 
   useEffect(() => {
     fetchData();
