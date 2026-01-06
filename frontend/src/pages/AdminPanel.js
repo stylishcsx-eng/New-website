@@ -575,7 +575,7 @@ export const AdminPanel = () => {
                         <th className="px-6 py-4 text-left font-heading text-xs text-muted-foreground uppercase">SteamID</th>
                         <th className="px-6 py-4 text-left font-heading text-xs text-muted-foreground uppercase">Role</th>
                         <th className="px-6 py-4 text-left font-heading text-xs text-muted-foreground uppercase">Registered</th>
-                        {isOwner && <th className="px-6 py-4 text-left font-heading text-xs text-muted-foreground uppercase">Actions</th>}
+                        <th className="px-6 py-4 text-left font-heading text-xs text-muted-foreground uppercase">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
@@ -586,8 +586,9 @@ export const AdminPanel = () => {
                           <td className="px-6 py-4 font-mono text-xs text-muted-foreground">{u.steamid || 'N/A'}</td>
                           <td className="px-6 py-4">
                             <span className={`px-2 py-1 text-xs font-heading uppercase ${
-                              u.role === 'owner' ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/50' :
-                              u.role === 'admin' ? 'bg-primary/20 text-primary border border-primary/50' :
+                              u.role === 'owner' ? 'bg-red-500/20 text-red-500 border border-red-500/50' :
+                              u.role === 'admin' ? 'bg-green-500/20 text-green-500 border border-green-500/50' :
+                              u.role === 'moderator' ? 'bg-blue-500/20 text-blue-500 border border-blue-500/50' :
                               'bg-muted text-muted-foreground'
                             }`}>
                               {u.role}
@@ -596,25 +597,25 @@ export const AdminPanel = () => {
                           <td className="px-6 py-4 font-mono text-xs text-muted-foreground">
                             {format(new Date(u.created_at), 'MMM dd, yyyy')}
                           </td>
-                          {isOwner && (
-                            <td className="px-6 py-4">
+                          <td className="px-6 py-4">
+                            <div className="flex space-x-2">
+                              <select
+                                value={u.role}
+                                onChange={(e) => handleChangeRole(u.id, e.target.value)}
+                                className="bg-muted/50 border border-white/10 text-white text-xs px-2 py-1"
+                              >
+                                <option value="player">Player</option>
+                                <option value="moderator">Moderator</option>
+                                <option value="admin">Admin</option>
+                                {isOwner && <option value="owner">Owner</option>}
+                              </select>
                               {u.role !== 'owner' && (
-                                <div className="flex space-x-2">
-                                  <select
-                                    value={u.role}
-                                    onChange={(e) => handleChangeRole(u.id, e.target.value)}
-                                    className="bg-muted/50 border border-white/10 text-white text-xs px-2 py-1"
-                                  >
-                                    <option value="player">Player</option>
-                                    <option value="admin">Admin</option>
-                                  </select>
-                                  <button onClick={() => handleDeleteUser(u.id, u.nickname)} className="text-red-500 hover:text-red-400 p-1">
-                                    <Trash2 className="w-4 h-4" />
-                                  </button>
-                                </div>
+                                <button onClick={() => handleDeleteUser(u.id, u.nickname)} className="text-red-500 hover:text-red-400 p-1">
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
                               )}
-                            </td>
-                          )}
+                            </div>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
