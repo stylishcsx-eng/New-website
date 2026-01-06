@@ -14,7 +14,8 @@ export const ApplyAdmin = () => {
     steamid: '',
     age: '',
     experience: '',
-    reason: ''
+    reason: '',
+    admin_commands_knowledge: 'good'
   });
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
