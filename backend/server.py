@@ -74,6 +74,19 @@ class UserResponse(BaseModel):
     created_at: str
     discord_id: Optional[str] = None
     discord_avatar: Optional[str] = None
+    bio: Optional[str] = None
+    post_count: Optional[int] = 0
+
+class UserProfileResponse(BaseModel):
+    id: str
+    nickname: str
+    steamid: Optional[str] = None
+    role: str
+    created_at: str
+    discord_avatar: Optional[str] = None
+    bio: Optional[str] = None
+    post_count: int
+    reputation: int
 
 class TokenResponse(BaseModel):
     access_token: str
@@ -97,12 +110,15 @@ class BanResponse(BaseModel):
     admin_name: str
     duration: str
     ban_date: str
+    is_expired: Optional[bool] = False
+    expires_at: Optional[str] = None
 
 class BanUpdate(BaseModel):
     player_nickname: Optional[str] = None
     steamid: Optional[str] = None
     reason: Optional[str] = None
     duration: Optional[str] = None
+    is_expired: Optional[bool] = None
 
 class AdminApplicationCreate(BaseModel):
     nickname: str
@@ -113,25 +129,33 @@ class AdminApplicationCreate(BaseModel):
 
 class AdminApplicationResponse(BaseModel):
     id: str
+    user_id: Optional[str] = None
     nickname: str
     steamid: str
     age: int
     experience: str
     reason: str
     status: str
+    admin_reason: Optional[str] = None
     submitted_at: str
+    reviewed_at: Optional[str] = None
+    reviewed_by: Optional[str] = None
 
 class AdminApplicationUpdate(BaseModel):
     status: str
+    admin_reason: Optional[str] = None
 
 class NotificationResponse(BaseModel):
     id: str
+    user_id: Optional[str] = None
     steamid: Optional[str] = None
     nickname: Optional[str] = None
+    title: Optional[str] = None
     message: str
     type: str
     read: bool
     created_at: str
+    link: Optional[str] = None
 
 class PlayerResponse(BaseModel):
     id: str
@@ -173,31 +197,40 @@ class ForumCategoryCreate(BaseModel):
     name: str
     description: str
     icon: Optional[str] = "MessageSquare"
+    order: Optional[int] = 0
 
 class ForumCategoryResponse(BaseModel):
     id: str
     name: str
     description: str
     icon: str
+    order: int
     topic_count: int
+    post_count: int
+    last_post: Optional[dict] = None
     created_at: str
 
 class ForumTopicCreate(BaseModel):
+    category_id: str
     title: str
     content: str
 
 class ForumTopicResponse(BaseModel):
     id: str
+    category_id: str
     title: str
     content: str
     author_id: str
     author_name: str
     author_avatar: Optional[str] = None
+    author_role: Optional[str] = None
     reply_count: int
+    view_count: int
     is_pinned: bool
     is_locked: bool
     created_at: str
     last_reply_at: Optional[str] = None
+    last_reply_by: Optional[str] = None
 
 class ForumReplyCreate(BaseModel):
     topic_id: str
@@ -210,6 +243,8 @@ class ForumReplyResponse(BaseModel):
     author_id: str
     author_name: str
     author_avatar: Optional[str] = None
+    author_role: Optional[str] = None
+    author_post_count: Optional[int] = 0
     created_at: str
 
 # Team Models
@@ -240,6 +275,10 @@ class TeamMemberUpdate(BaseModel):
     avatar: Optional[str] = None
     description: Optional[str] = None
     order: Optional[int] = None
+
+class ProfileUpdate(BaseModel):
+    bio: Optional[str] = None
+    steamid: Optional[str] = None
 
 # ==================== AUTH HELPERS ====================
 
@@ -297,6 +336,9 @@ async def init_default_admin():
             "role": "owner",
             "discord_id": None,
             "discord_avatar": None,
+            "bio": "Server Owner & Developer",
+            "post_count": 0,
+            "reputation": 0,
             "created_at": datetime.now(timezone.utc).isoformat()
         }
         await db.users.insert_one(owner_user)
@@ -306,9 +348,11 @@ async def init_default_forum_categories():
     count = await db.forum_categories.count_documents({})
     if count == 0:
         categories = [
-            {"id": str(uuid.uuid4()), "name": "General", "description": "General discussion about the server", "icon": "MessageSquare", "topic_count": 0, "created_at": datetime.now(timezone.utc).isoformat()},
-            {"id": str(uuid.uuid4()), "name": "Support", "description": "Need help? Ask here!", "icon": "HelpCircle", "topic_count": 0, "created_at": datetime.now(timezone.utc).isoformat()},
-            {"id": str(uuid.uuid4()), "name": "Off-Topic", "description": "Talk about anything!", "icon": "Coffee", "topic_count": 0, "created_at": datetime.now(timezone.utc).isoformat()},
+            {"id": str(uuid.uuid4()), "name": "Announcements", "description": "Server news and announcements", "icon": "Megaphone", "order": 1, "topic_count": 0, "post_count": 0, "last_post": None, "created_at": datetime.now(timezone.utc).isoformat()},
+            {"id": str(uuid.uuid4()), "name": "General Discussion", "description": "Talk about anything related to the server", "icon": "MessageSquare", "order": 2, "topic_count": 0, "post_count": 0, "last_post": None, "created_at": datetime.now(timezone.utc).isoformat()},
+            {"id": str(uuid.uuid4()), "name": "Support", "description": "Need help? Ask here!", "icon": "HelpCircle", "order": 3, "topic_count": 0, "post_count": 0, "last_post": None, "created_at": datetime.now(timezone.utc).isoformat()},
+            {"id": str(uuid.uuid4()), "name": "Ban Appeals", "description": "Appeal your ban here", "icon": "Scale", "order": 4, "topic_count": 0, "post_count": 0, "last_post": None, "created_at": datetime.now(timezone.utc).isoformat()},
+            {"id": str(uuid.uuid4()), "name": "Off-Topic", "description": "Talk about anything!", "icon": "Coffee", "order": 5, "topic_count": 0, "post_count": 0, "last_post": None, "created_at": datetime.now(timezone.utc).isoformat()},
         ]
         await db.forum_categories.insert_many(categories)
         logging.info("Default forum categories created")
@@ -378,7 +422,6 @@ async def discord_login():
 async def discord_callback(code: str = Query(...)):
     """Handle Discord OAuth callback"""
     try:
-        # Exchange code for token
         async with httpx.AsyncClient() as client_http:
             token_response = await client_http.post(
                 "https://discord.com/api/oauth2/token",
@@ -399,7 +442,6 @@ async def discord_callback(code: str = Query(...)):
             token_data = token_response.json()
             access_token = token_data["access_token"]
             
-            # Get user info from Discord
             user_response = await client_http.get(
                 "https://discord.com/api/users/@me",
                 headers={"Authorization": f"Bearer {access_token}"}
@@ -417,11 +459,9 @@ async def discord_callback(code: str = Query(...)):
             if discord_user.get("avatar"):
                 discord_avatar = f"https://cdn.discordapp.com/avatars/{discord_id}/{discord_user['avatar']}.png"
             
-            # Check if user exists
             existing_user = await db.users.find_one({"discord_id": discord_id})
             
             if existing_user:
-                # Update user info
                 await db.users.update_one(
                     {"discord_id": discord_id},
                     {"$set": {
@@ -432,7 +472,6 @@ async def discord_callback(code: str = Query(...)):
                 )
                 user = existing_user
             else:
-                # Create new user
                 user = {
                     "id": str(uuid.uuid4()),
                     "nickname": discord_username,
@@ -442,14 +481,14 @@ async def discord_callback(code: str = Query(...)):
                     "role": "player",
                     "discord_id": discord_id,
                     "discord_avatar": discord_avatar,
+                    "bio": None,
+                    "post_count": 0,
+                    "reputation": 0,
                     "created_at": datetime.now(timezone.utc).isoformat()
                 }
                 await db.users.insert_one(user)
             
-            # Create JWT token
             jwt_token = create_token({"sub": user["id"], "role": user.get("role", "player")})
-            
-            # Redirect to frontend with token
             return RedirectResponse(url=f"{FRONTEND_URL}/auth/callback?token={jwt_token}")
             
     except Exception as e:
@@ -474,12 +513,10 @@ async def login(data: UserLogin):
 # Email/Password Register
 @api_router.post("/auth/register", response_model=TokenResponse)
 async def register(data: UserCreate):
-    # Check if email already exists
     existing = await db.users.find_one({"email": data.email})
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
     
-    # Check if nickname already exists
     existing_nick = await db.users.find_one({"nickname": data.nickname})
     if existing_nick:
         raise HTTPException(status_code=400, detail="Nickname already taken")
@@ -493,6 +530,9 @@ async def register(data: UserCreate):
         "role": "player",
         "discord_id": None,
         "discord_avatar": None,
+        "bio": None,
+        "post_count": 0,
+        "reputation": 0,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     await db.users.insert_one(user)
@@ -501,7 +541,7 @@ async def register(data: UserCreate):
     user_response = {k: v for k, v in user.items() if k != "password"}
     return {"access_token": token, "user": user_response}
 
-# Keep admin login for backend access
+# Admin login
 @api_router.post("/auth/admin-login", response_model=TokenResponse)
 async def admin_login(data: AdminLogin):
     user = await db.users.find_one({"nickname": data.username, "role": {"$in": ["admin", "owner"]}}, {"_id": 0})
@@ -511,6 +551,46 @@ async def admin_login(data: AdminLogin):
     token = create_token({"sub": user["id"], "role": user["role"]})
     user_response = {k: v for k, v in user.items() if k != "password"}
     return {"access_token": token, "user": user_response}
+
+# ==================== USER PROFILE ROUTES ====================
+
+@api_router.get("/users/{user_id}/profile", response_model=UserProfileResponse)
+async def get_user_profile(user_id: str):
+    user = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0, "email": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Get post count
+    post_count = await db.forum_replies.count_documents({"author_id": user_id})
+    topic_count = await db.forum_topics.count_documents({"author_id": user_id})
+    user["post_count"] = post_count + topic_count
+    user["reputation"] = user.get("reputation", 0)
+    
+    return user
+
+@api_router.get("/users/{user_id}/posts")
+async def get_user_posts(user_id: str, limit: int = 20):
+    topics = await db.forum_topics.find({"author_id": user_id}, {"_id": 0}).sort("created_at", -1).to_list(limit)
+    replies = await db.forum_replies.find({"author_id": user_id}, {"_id": 0}).sort("created_at", -1).to_list(limit)
+    
+    # Combine and sort
+    all_posts = []
+    for t in topics:
+        t["type"] = "topic"
+        all_posts.append(t)
+    for r in replies:
+        r["type"] = "reply"
+        all_posts.append(r)
+    
+    all_posts.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+    return all_posts[:limit]
+
+@api_router.patch("/users/profile")
+async def update_profile(data: ProfileUpdate, user = Depends(require_auth)):
+    update_data = {k: v for k, v in data.model_dump().items() if v is not None}
+    if update_data:
+        await db.users.update_one({"id": user["id"]}, {"$set": update_data})
+    return {"message": "Profile updated"}
 
 # ==================== SERVER STATUS ROUTES ====================
 
@@ -539,22 +619,59 @@ async def get_dashboard_stats():
 # ==================== BANS ROUTES ====================
 
 @api_router.get("/bans", response_model=List[BanResponse])
-async def get_bans(search: Optional[str] = None):
+async def get_bans(search: Optional[str] = None, status: Optional[str] = None):
+    # First, auto-expire bans that should be expired
+    now = datetime.now(timezone.utc).isoformat()
+    await db.bans.update_many(
+        {"expires_at": {"$lt": now, "$ne": None}, "is_expired": False},
+        {"$set": {"is_expired": True}}
+    )
+    
     query = {}
     if search:
         query["$or"] = [
             {"player_nickname": {"$regex": search, "$options": "i"}},
             {"steamid": {"$regex": search, "$options": "i"}}
         ]
-    bans = await db.bans.find(query, {"_id": 0}).to_list(1000)
+    
+    if status == "active":
+        query["is_expired"] = {"$ne": True}
+    elif status == "expired":
+        query["is_expired"] = True
+    
+    bans = await db.bans.find(query, {"_id": 0}).sort("ban_date", -1).to_list(1000)
     return bans
 
 @api_router.post("/bans", response_model=BanResponse)
 async def create_ban(data: BanCreate, user = Depends(require_admin)):
+    # Calculate expiry
+    expires_at = None
+    is_expired = False
+    if data.duration and "permanent" not in data.duration.lower():
+        # Parse duration
+        import re
+        match = re.search(r'(\d+)\s*(minute|hour|day|week|month)', data.duration.lower())
+        if match:
+            value = int(match.group(1))
+            unit = match.group(2)
+            delta = timedelta(minutes=value)
+            if 'hour' in unit:
+                delta = timedelta(hours=value)
+            elif 'day' in unit:
+                delta = timedelta(days=value)
+            elif 'week' in unit:
+                delta = timedelta(weeks=value)
+            elif 'month' in unit:
+                delta = timedelta(days=value*30)
+            expires_at = (datetime.now(timezone.utc) + delta).isoformat()
+    
     ban = {
         "id": str(uuid.uuid4()),
         **data.model_dump(),
-        "ban_date": datetime.now(timezone.utc).isoformat()
+        "ban_date": datetime.now(timezone.utc).isoformat(),
+        "expires_at": expires_at,
+        "is_expired": is_expired,
+        "source": "website"
     }
     await db.bans.insert_one(ban)
     return ban
@@ -588,45 +705,17 @@ async def update_ban(ban_id: str, data: BanUpdate, user = Depends(require_admin)
     result.pop("_id", None)
     return result
 
-# ==================== BAN WEBHOOK ====================
-
-class BanWebhookData(BaseModel):
-    secret: str
-    player_nickname: str
-    steamid: str
-    reason: str
-    admin_name: str
-    duration: str
-
-@api_router.post("/bans/webhook")
-async def receive_ban_webhook(data: BanWebhookData):
-    if data.secret != BAN_WEBHOOK_SECRET:
-        raise HTTPException(status_code=403, detail="Invalid secret")
-    
-    existing = await db.bans.find_one({"steamid": data.steamid, "reason": data.reason})
-    if existing:
-        return {"message": "Ban already exists", "id": existing["id"]}
-    
-    ban = {
-        "id": str(uuid.uuid4()),
-        "player_nickname": data.player_nickname,
-        "steamid": data.steamid,
-        "ip": "Hidden",
-        "reason": data.reason,
-        "admin_name": data.admin_name,
-        "duration": data.duration,
-        "ban_date": datetime.now(timezone.utc).isoformat(),
-        "source": "server"
-    }
-    await db.bans.insert_one(ban)
-    return {"message": "Ban added", "id": ban["id"]}
-
-@api_router.delete("/bans/webhook/{steamid}")
-async def remove_ban_webhook(steamid: str, secret: str):
-    if secret != BAN_WEBHOOK_SECRET:
-        raise HTTPException(status_code=403, detail="Invalid secret")
-    result = await db.bans.delete_many({"steamid": steamid})
-    return {"message": f"Removed {result.deleted_count} ban(s)"}
+@api_router.patch("/bans/{ban_id}/expire")
+async def expire_ban(ban_id: str, user = Depends(require_admin)):
+    result = await db.bans.find_one_and_update(
+        {"id": ban_id},
+        {"$set": {"is_expired": True}},
+        return_document=True
+    )
+    if not result:
+        raise HTTPException(status_code=404, detail="Ban not found")
+    result.pop("_id", None)
+    return result
 
 # ==================== PLAYERS / RANKINGS ROUTES ====================
 
@@ -660,46 +749,6 @@ async def get_player(steamid: str):
         raise HTTPException(status_code=404, detail="Player not found")
     return player
 
-# ==================== PLAYER STATS WEBHOOK ====================
-
-class PlayerStatsWebhookData(BaseModel):
-    secret: str
-    nickname: str
-    steamid: str
-    kills: int
-    deaths: int
-    headshots: int = 0
-
-@api_router.post("/players/webhook")
-async def receive_player_stats_webhook(data: PlayerStatsWebhookData):
-    if data.secret != BAN_WEBHOOK_SECRET:
-        raise HTTPException(status_code=403, detail="Invalid secret")
-    
-    kd_ratio = round(data.kills / max(data.deaths, 1), 2)
-    level = min(50, data.kills // 500)
-    
-    existing = await db.players.find_one({"steamid": data.steamid})
-    
-    player_data = {
-        "nickname": data.nickname,
-        "steamid": data.steamid,
-        "kills": data.kills,
-        "deaths": data.deaths,
-        "headshots": data.headshots,
-        "kd_ratio": kd_ratio,
-        "level": level,
-        "last_seen": datetime.now(timezone.utc).isoformat()
-    }
-    
-    if existing:
-        await db.players.update_one({"steamid": data.steamid}, {"$set": player_data})
-        return {"message": "Player updated", "steamid": data.steamid}
-    else:
-        player_data["id"] = str(uuid.uuid4())
-        player_data["rank"] = 0
-        await db.players.insert_one(player_data)
-        return {"message": "Player added", "steamid": data.steamid}
-
 # ==================== ADMIN APPLICATIONS ROUTES ====================
 
 @api_router.get("/admin-applications", response_model=List[AdminApplicationResponse])
@@ -708,10 +757,13 @@ async def get_admin_applications(user = Depends(require_admin)):
     return apps
 
 @api_router.post("/admin-applications", response_model=AdminApplicationResponse)
-async def create_admin_application(data: AdminApplicationCreate):
+async def create_admin_application(data: AdminApplicationCreate, user = Depends(require_auth)):
     thirty_days_ago = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
     recent_app = await db.admin_applications.find_one({
-        "steamid": data.steamid,
+        "$or": [
+            {"steamid": data.steamid},
+            {"user_id": user["id"]}
+        ],
         "submitted_at": {"$gte": thirty_days_ago}
     })
     if recent_app:
@@ -719,12 +771,40 @@ async def create_admin_application(data: AdminApplicationCreate):
     
     app = {
         "id": str(uuid.uuid4()),
+        "user_id": user["id"],
         **data.model_dump(),
         "status": "pending",
-        "submitted_at": datetime.now(timezone.utc).isoformat()
+        "admin_reason": None,
+        "submitted_at": datetime.now(timezone.utc).isoformat(),
+        "reviewed_at": None,
+        "reviewed_by": None
     }
     await db.admin_applications.insert_one(app)
+    
+    # Create notification for the user
+    notification = {
+        "id": str(uuid.uuid4()),
+        "user_id": user["id"],
+        "steamid": data.steamid,
+        "nickname": data.nickname,
+        "title": "Application Submitted",
+        "message": "Your admin application has been submitted and is pending review.",
+        "type": "application_submitted",
+        "read": False,
+        "link": None,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.notifications.insert_one(notification)
+    
     return app
+
+@api_router.get("/admin-applications/my")
+async def get_my_applications(user = Depends(require_auth)):
+    apps = await db.admin_applications.find(
+        {"user_id": user["id"]}, 
+        {"_id": 0}
+    ).sort("submitted_at", -1).to_list(10)
+    return apps
 
 @api_router.patch("/admin-applications/{app_id}", response_model=AdminApplicationResponse)
 async def update_admin_application(app_id: str, data: AdminApplicationUpdate, user = Depends(require_admin)):
@@ -732,20 +812,36 @@ async def update_admin_application(app_id: str, data: AdminApplicationUpdate, us
     if not application:
         raise HTTPException(status_code=404, detail="Application not found")
     
+    update_data = {
+        "status": data.status,
+        "admin_reason": data.admin_reason,
+        "reviewed_at": datetime.now(timezone.utc).isoformat(),
+        "reviewed_by": user["nickname"]
+    }
+    
     result = await db.admin_applications.find_one_and_update(
         {"id": app_id},
-        {"$set": {"status": data.status}},
+        {"$set": update_data},
         return_document=True
     )
     result.pop("_id", None)
     
+    # Create notification for the applicant
+    status_text = "accepted" if data.status == "accepted" else "rejected"
+    message = f"Your admin application has been {status_text}."
+    if data.admin_reason:
+        message += f" Reason: {data.admin_reason}"
+    
     notification = {
         "id": str(uuid.uuid4()),
+        "user_id": application.get("user_id"),
         "steamid": application["steamid"],
         "nickname": application["nickname"],
-        "message": f"Your admin application has been {data.status}!",
-        "type": "application_" + data.status,
+        "title": f"Application {status_text.capitalize()}",
+        "message": message,
+        "type": f"application_{data.status}",
         "read": False,
+        "link": None,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     await db.notifications.insert_one(notification)
@@ -759,42 +855,62 @@ async def delete_admin_application(app_id: str, user = Depends(require_admin)):
         raise HTTPException(status_code=404, detail="Application not found")
     return {"message": "Application deleted"}
 
-@api_router.delete("/admin-applications/bulk/old")
-async def delete_old_applications(user = Depends(require_admin)):
-    thirty_days_ago = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
-    result = await db.admin_applications.delete_many({"submitted_at": {"$lt": thirty_days_ago}})
-    return {"message": f"Deleted {result.deleted_count} old applications"}
-
 # ==================== NOTIFICATIONS ====================
 
 @api_router.get("/notifications", response_model=List[NotificationResponse])
-async def get_notifications(steamid: Optional[str] = None, nickname: Optional[str] = None):
-    query = {}
-    if steamid:
-        query["steamid"] = steamid
-    if nickname:
-        query["nickname"] = nickname
-    notifications = await db.notifications.find(query, {"_id": 0}).sort("created_at", -1).to_list(50)
+async def get_notifications(user = Depends(require_auth)):
+    notifications = await db.notifications.find(
+        {"user_id": user["id"]}, 
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(50)
     return notifications
 
+@api_router.get("/notifications/count")
+async def get_unread_count(user = Depends(require_auth)):
+    count = await db.notifications.count_documents({"user_id": user["id"], "read": False})
+    return {"count": count}
+
 @api_router.patch("/notifications/{notif_id}/read")
-async def mark_notification_read(notif_id: str):
-    await db.notifications.update_one({"id": notif_id}, {"$set": {"read": True}})
+async def mark_notification_read(notif_id: str, user = Depends(require_auth)):
+    await db.notifications.update_one(
+        {"id": notif_id, "user_id": user["id"]}, 
+        {"$set": {"read": True}}
+    )
     return {"message": "Notification marked as read"}
 
+@api_router.patch("/notifications/read-all")
+async def mark_all_read(user = Depends(require_auth)):
+    await db.notifications.update_many(
+        {"user_id": user["id"]}, 
+        {"$set": {"read": True}}
+    )
+    return {"message": "All notifications marked as read"}
+
 @api_router.delete("/notifications/{notif_id}")
-async def delete_notification(notif_id: str):
-    await db.notifications.delete_one({"id": notif_id})
+async def delete_notification(notif_id: str, user = Depends(require_auth)):
+    await db.notifications.delete_one({"id": notif_id, "user_id": user["id"]})
     return {"message": "Notification deleted"}
 
 # ==================== FORUM ROUTES ====================
 
 @api_router.get("/forum/categories", response_model=List[ForumCategoryResponse])
 async def get_forum_categories():
-    categories = await db.forum_categories.find({}, {"_id": 0}).to_list(100)
-    # Update topic counts
+    categories = await db.forum_categories.find({}, {"_id": 0}).sort("order", 1).to_list(100)
+    
     for cat in categories:
         cat["topic_count"] = await db.forum_topics.count_documents({"category_id": cat["id"]})
+        cat["post_count"] = await db.forum_replies.count_documents({"category_id": cat["id"]})
+        
+        # Get last post
+        last_topic = await db.forum_topics.find({"category_id": cat["id"]}).sort("last_reply_at", -1).limit(1).to_list(1)
+        if last_topic:
+            cat["last_post"] = {
+                "topic_id": last_topic[0]["id"],
+                "topic_title": last_topic[0]["title"],
+                "author": last_topic[0].get("last_reply_by") or last_topic[0]["author_name"],
+                "date": last_topic[0].get("last_reply_at") or last_topic[0]["created_at"]
+            }
+    
     return categories
 
 @api_router.post("/forum/categories", response_model=ForumCategoryResponse)
@@ -803,6 +919,8 @@ async def create_forum_category(data: ForumCategoryCreate, user = Depends(requir
         "id": str(uuid.uuid4()),
         **data.model_dump(),
         "topic_count": 0,
+        "post_count": 0,
+        "last_post": None,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     await db.forum_categories.insert_one(category)
@@ -811,8 +929,9 @@ async def create_forum_category(data: ForumCategoryCreate, user = Depends(requir
 @api_router.delete("/forum/categories/{category_id}")
 async def delete_forum_category(category_id: str, user = Depends(require_admin)):
     await db.forum_topics.delete_many({"category_id": category_id})
+    await db.forum_replies.delete_many({"category_id": category_id})
     await db.forum_categories.delete_one({"id": category_id})
-    return {"message": "Category and all topics deleted"}
+    return {"message": "Category and all content deleted"}
 
 @api_router.get("/forum/topics")
 async def get_forum_topics(category_id: Optional[str] = None, limit: int = 50):
@@ -822,29 +941,51 @@ async def get_forum_topics(category_id: Optional[str] = None, limit: int = 50):
     topics = await db.forum_topics.find(query, {"_id": 0}).sort([("is_pinned", -1), ("last_reply_at", -1), ("created_at", -1)]).to_list(limit)
     return topics
 
+@api_router.get("/forum/topics/recent")
+async def get_recent_topics(limit: int = 10):
+    topics = await db.forum_topics.find({}, {"_id": 0}).sort("created_at", -1).to_list(limit)
+    return topics
+
 @api_router.get("/forum/topics/{topic_id}")
 async def get_forum_topic(topic_id: str):
     topic = await db.forum_topics.find_one({"id": topic_id}, {"_id": 0})
     if not topic:
         raise HTTPException(status_code=404, detail="Topic not found")
+    
+    # Increment view count
+    await db.forum_topics.update_one({"id": topic_id}, {"$inc": {"view_count": 1}})
+    topic["view_count"] = topic.get("view_count", 0) + 1
+    
     return topic
 
 @api_router.post("/forum/topics", response_model=ForumTopicResponse)
 async def create_forum_topic(data: ForumTopicCreate, user = Depends(require_auth)):
+    category = await db.forum_categories.find_one({"id": data.category_id})
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
+    
     topic = {
         "id": str(uuid.uuid4()),
+        "category_id": data.category_id,
         "title": data.title,
         "content": data.content,
         "author_id": user["id"],
         "author_name": user["nickname"],
         "author_avatar": user.get("discord_avatar"),
+        "author_role": user.get("role"),
         "reply_count": 0,
+        "view_count": 0,
         "is_pinned": False,
         "is_locked": False,
         "created_at": datetime.now(timezone.utc).isoformat(),
-        "last_reply_at": None
+        "last_reply_at": datetime.now(timezone.utc).isoformat(),
+        "last_reply_by": None
     }
     await db.forum_topics.insert_one(topic)
+    
+    # Update user post count
+    await db.users.update_one({"id": user["id"]}, {"$inc": {"post_count": 1}})
+    
     return topic
 
 @api_router.delete("/forum/topics/{topic_id}")
@@ -853,14 +994,12 @@ async def delete_forum_topic(topic_id: str, user = Depends(require_auth)):
     if not topic:
         raise HTTPException(status_code=404, detail="Topic not found")
     
-    # Only author or admin can delete
     if topic["author_id"] != user["id"] and user.get("role") not in ["admin", "owner"]:
         raise HTTPException(status_code=403, detail="Not authorized")
     
     await db.forum_replies.delete_many({"topic_id": topic_id})
     await db.forum_topics.delete_one({"id": topic_id})
     return {"message": "Topic deleted"}
-
 
 @api_router.patch("/forum/topics/{topic_id}/pin")
 async def toggle_pin_topic(topic_id: str, user = Depends(require_admin)):
@@ -883,6 +1022,12 @@ async def toggle_lock_topic(topic_id: str, user = Depends(require_admin)):
 @api_router.get("/forum/replies/{topic_id}", response_model=List[ForumReplyResponse])
 async def get_forum_replies(topic_id: str):
     replies = await db.forum_replies.find({"topic_id": topic_id}, {"_id": 0}).sort("created_at", 1).to_list(500)
+    
+    # Add author post counts
+    for reply in replies:
+        user = await db.users.find_one({"id": reply["author_id"]}, {"post_count": 1})
+        reply["author_post_count"] = user.get("post_count", 0) if user else 0
+    
     return replies
 
 @api_router.post("/forum/replies", response_model=ForumReplyResponse)
@@ -897,17 +1042,30 @@ async def create_forum_reply(data: ForumReplyCreate, user = Depends(require_auth
     reply = {
         "id": str(uuid.uuid4()),
         "topic_id": data.topic_id,
+        "category_id": topic.get("category_id"),
         "content": data.content,
         "author_id": user["id"],
         "author_name": user["nickname"],
         "author_avatar": user.get("discord_avatar"),
+        "author_role": user.get("role"),
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     await db.forum_replies.insert_one(reply)
+    
     await db.forum_topics.update_one(
         {"id": data.topic_id},
-        {"$inc": {"reply_count": 1}, "$set": {"last_reply_at": reply["created_at"]}}
+        {
+            "$inc": {"reply_count": 1}, 
+            "$set": {
+                "last_reply_at": reply["created_at"],
+                "last_reply_by": user["nickname"]
+            }
+        }
     )
+    
+    # Update user post count
+    await db.users.update_one({"id": user["id"]}, {"$inc": {"post_count": 1}})
+    
     return reply
 
 @api_router.delete("/forum/replies/{reply_id}")
@@ -979,6 +1137,9 @@ async def create_admin_user(data: CreateAdminUser, user = Depends(require_owner)
         "role": "admin",
         "discord_id": None,
         "discord_avatar": None,
+        "bio": None,
+        "post_count": 0,
+        "reputation": 0,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     await db.users.insert_one(new_admin)
@@ -1020,7 +1181,7 @@ async def get_all_users(user = Depends(require_admin)):
 
 @api_router.get("/")
 async def root():
-    return {"message": "shadowzm: Zombie reverse API", "version": "2.0.0"}
+    return {"message": "ShadowZM API", "version": "3.0.0"}
 
 # Include router
 app.include_router(api_router)
