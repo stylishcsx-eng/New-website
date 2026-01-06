@@ -442,6 +442,9 @@ export const Forum = () => {
           </div>
         )}
       </div>
+      
+      {/* Chatbox */}
+      <Chatbox />
     </div>
   );
 };
