@@ -26,6 +26,11 @@ export const AdminPanel = () => {
   const [showCreateAdmin, setShowCreateAdmin] = useState(false);
   const [newAdmin, setNewAdmin] = useState({ nickname: '', email: '', password: '', steamid: '' });
 
+  // Application review modal
+  const [reviewingApp, setReviewingApp] = useState(null);
+  const [reviewStatus, setReviewStatus] = useState('');
+  const [reviewReason, setReviewReason] = useState('');
+
   useEffect(() => {
     fetchData();
   }, [activeTab]);
