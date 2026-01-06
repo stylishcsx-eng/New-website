@@ -253,6 +253,8 @@ class ForumReplyResponse(BaseModel):
 class TeamMemberCreate(BaseModel):
     name: str
     role: str
+    role_type: str = "member"  # "owner", "admin", "moderator", "member"
+    user_id: Optional[str] = None  # Link to user profile if exists
     discord_id: Optional[str] = None
     steamid: Optional[str] = None
     avatar: Optional[str] = None
@@ -263,6 +265,8 @@ class TeamMemberResponse(BaseModel):
     id: str
     name: str
     role: str
+    role_type: str
+    user_id: Optional[str] = None
     discord_id: Optional[str] = None
     steamid: Optional[str] = None
     avatar: Optional[str] = None
@@ -272,11 +276,24 @@ class TeamMemberResponse(BaseModel):
 class TeamMemberUpdate(BaseModel):
     name: Optional[str] = None
     role: Optional[str] = None
+    role_type: Optional[str] = None
+    user_id: Optional[str] = None
     discord_id: Optional[str] = None
     steamid: Optional[str] = None
     avatar: Optional[str] = None
     description: Optional[str] = None
     order: Optional[int] = None
+
+# Team Role Configuration
+class TeamRoleConfig(BaseModel):
+    name: str
+    color: str
+    order: int
+
+class TeamRoleConfigCreate(BaseModel):
+    name: str
+    color: str
+    order: int = 0
 
 class ProfileUpdate(BaseModel):
     bio: Optional[str] = None
