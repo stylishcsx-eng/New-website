@@ -1276,6 +1276,9 @@ async def create_forum_reply(data: ForumReplyCreate, user = Depends(require_auth
     if topic.get("is_locked"):
         raise HTTPException(status_code=403, detail="Topic is locked")
     
+    # Limit media URLs to 5
+    media_urls = (data.media_urls or [])[:5]
+    
     reply = {
         "id": str(uuid.uuid4()),
         "topic_id": data.topic_id,
@@ -1283,8 +1286,9 @@ async def create_forum_reply(data: ForumReplyCreate, user = Depends(require_auth
         "content": data.content,
         "author_id": user["id"],
         "author_name": user["nickname"],
-        "author_avatar": user.get("discord_avatar"),
+        "author_avatar": user.get("discord_avatar") or user.get("avatar_url"),
         "author_role": user.get("role"),
+        "media_urls": media_urls,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     await db.forum_replies.insert_one(reply)
