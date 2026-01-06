@@ -714,6 +714,59 @@ export const ForumCategory = () => {
                   required
                 />
               </div>
+              
+              {/* Media Attachments */}
+              <div>
+                <label className="block text-sm text-muted-foreground uppercase tracking-wider mb-2">
+                  <Image className="w-4 h-4 inline mr-1" />
+                  Attach Media (Images, GIFs, Videos)
+                </label>
+                <div className="flex space-x-2">
+                  <input
+                    type="url"
+                    value={mediaInput}
+                    onChange={(e) => setMediaInput(e.target.value)}
+                    className="flex-1 bg-muted/50 border border-white/10 px-4 py-2 text-white outline-none focus:border-primary text-sm"
+                    placeholder="Paste image/video URL (imgur, gyazo, youtube, etc.)"
+                  />
+                  <button
+                    type="button"
+                    onClick={addMediaUrl}
+                    disabled={!mediaInput.trim() || newTopic.media_urls.length >= 5}
+                    className="px-4 py-2 bg-green-500/20 border border-green-500 text-green-500 hover:bg-green-500 hover:text-white transition-colors disabled:opacity-50"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">Max 5 attachments. Supports: JPG, PNG, GIF, MP4, WebM, YouTube</p>
+                
+                {/* Media Previews */}
+                {newTopic.media_urls.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {newTopic.media_urls.map((url, idx) => (
+                      <div key={idx} className="relative group">
+                        <div className="w-20 h-20 bg-muted border border-white/10 overflow-hidden">
+                          {getMediaType(url) === 'video' ? (
+                            <div className="w-full h-full flex items-center justify-center bg-black/50">
+                              <Film className="w-8 h-8 text-primary" />
+                            </div>
+                          ) : (
+                            <img src={url} alt="" className="w-full h-full object-cover" onError={(e) => e.target.src = ''} />
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeMediaUrl(idx)}
+                          className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <div className="flex space-x-3">
                 <button
                   type="submit"
