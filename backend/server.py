@@ -195,11 +195,27 @@ class CreateAdminUser(BaseModel):
     steamid: Optional[str] = None
 
 # Forum Models
+class ForumSectionCreate(BaseModel):
+    name: str
+    description: Optional[str] = ""
+    icon: Optional[str] = "MessageSquare"
+    order: Optional[int] = 0
+
+class ForumSectionResponse(BaseModel):
+    id: str
+    name: str
+    description: Optional[str] = ""
+    icon: str
+    order: int
+    categories: Optional[List[dict]] = []
+
 class ForumCategoryCreate(BaseModel):
     name: str
     description: str
     icon: Optional[str] = "MessageSquare"
     order: Optional[int] = 0
+    section_id: Optional[str] = None
+    tags: Optional[List[str]] = []
 
 class ForumCategoryResponse(BaseModel):
     id: str
@@ -207,6 +223,8 @@ class ForumCategoryResponse(BaseModel):
     description: str
     icon: str
     order: int
+    section_id: Optional[str] = None
+    tags: Optional[List[str]] = []
     topic_count: int
     post_count: int
     last_post: Optional[dict] = None
@@ -216,6 +234,7 @@ class ForumTopicCreate(BaseModel):
     category_id: str
     title: str
     content: str
+    tag: Optional[str] = None
 
 class ForumTopicResponse(BaseModel):
     id: str
@@ -230,6 +249,7 @@ class ForumTopicResponse(BaseModel):
     view_count: int
     is_pinned: bool
     is_locked: bool
+    tag: Optional[str] = None
     created_at: str
     last_reply_at: Optional[str] = None
     last_reply_by: Optional[str] = None
