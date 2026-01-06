@@ -1419,14 +1419,21 @@ async def delete_admin_user(user_id: str, user = Depends(require_owner)):
     return {"message": "User deleted"}
 
 @api_router.patch("/owner/update-role/{user_id}")
-async def update_user_role(user_id: str, role: str, user = Depends(require_owner)):
-    if role not in ["player", "admin"]:
-        raise HTTPException(status_code=400, detail="Invalid role")
+async def update_user_role(user_id: str, role: str, user = Depends(require_admin)):
+    valid_roles = ["player", "moderator", "admin", "owner"]
+    if role not in valid_roles:
+        raise HTTPException(status_code=400, detail=f"Invalid role. Must be one of: {', '.join(valid_roles)}")
+    
+    # Only owners can promote to owner
+    if role == "owner" and user.get("role") != "owner":
+        raise HTTPException(status_code=403, detail="Only owners can promote to owner")
     
     target_user = await db.users.find_one({"id": user_id})
     if not target_user:
         raise HTTPException(status_code=404, detail="User not found")
-    if target_user.get("role") == "owner":
+    
+    # Cannot demote an owner unless you're an owner
+    if target_user.get("role") == "owner" and user.get("role") != "owner":
         raise HTTPException(status_code=403, detail="Cannot change owner role")
     
     await db.users.update_one({"id": user_id}, {"$set": {"role": role}})
