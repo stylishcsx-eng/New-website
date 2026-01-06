@@ -108,6 +108,16 @@ export const AdminPanel = () => {
     }
   };
 
+  const handleExpireBan = async (banId) => {
+    try {
+      await axios.patch(`${API}/bans/${banId}/expire`);
+      toast.success('Ban marked as expired');
+      fetchData();
+    } catch (error) {
+      toast.error('Failed to expire ban');
+    }
+  };
+
   const handleEditBan = (ban) => {
     setEditingBan(ban);
     setEditForm({
