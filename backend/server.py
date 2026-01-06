@@ -224,6 +224,7 @@ class ForumTopicCreate(BaseModel):
     title: str
     content: str
     tag: Optional[str] = None
+    media_urls: Optional[List[str]] = []
 
 class ForumTopicResponse(BaseModel):
     id: str
@@ -239,6 +240,7 @@ class ForumTopicResponse(BaseModel):
     is_pinned: bool
     is_locked: bool
     tag: Optional[str] = None
+    media_urls: Optional[List[str]] = []
     created_at: str
     last_reply_at: Optional[str] = None
     last_reply_by: Optional[str] = None
@@ -246,6 +248,7 @@ class ForumTopicResponse(BaseModel):
 class ForumReplyCreate(BaseModel):
     topic_id: str
     content: str
+    media_urls: Optional[List[str]] = []
 
 class ForumReplyResponse(BaseModel):
     id: str
@@ -256,6 +259,7 @@ class ForumReplyResponse(BaseModel):
     author_avatar: Optional[str] = None
     author_role: Optional[str] = None
     author_post_count: Optional[int] = 0
+    media_urls: Optional[List[str]] = []
     created_at: str
 
 # Team Models
