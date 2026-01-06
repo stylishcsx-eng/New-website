@@ -7,7 +7,7 @@ import {
   MessageSquare, Plus, Pin, Lock, MessageCircle, Trash2, User, Clock, 
   Eye, Megaphone, HelpCircle, Scale, Coffee, ChevronRight, ArrowLeft,
   Settings, FolderPlus, Edit, Users, Bug, Shield, AlertTriangle, Tag,
-  CheckCircle, XCircle, Archive, Bell, Image, Film
+  CheckCircle, XCircle, Archive, Bell, Image, Film, X
 } from 'lucide-react';
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
