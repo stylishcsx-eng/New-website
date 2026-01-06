@@ -634,22 +634,41 @@ export const AdminPanel = () => {
                         <th className="px-6 py-4 text-left font-heading text-xs text-muted-foreground uppercase">SteamID</th>
                         <th className="px-6 py-4 text-left font-heading text-xs text-muted-foreground uppercase">Reason</th>
                         <th className="px-6 py-4 text-left font-heading text-xs text-muted-foreground uppercase">Duration</th>
+                        <th className="px-6 py-4 text-left font-heading text-xs text-muted-foreground uppercase">Status</th>
                         <th className="px-6 py-4 text-left font-heading text-xs text-muted-foreground uppercase">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
                       {bans.map((ban) => (
-                        <tr key={ban.id} className="hover:bg-white/5">
+                        <tr key={ban.id} className={`hover:bg-white/5 ${ban.is_expired ? 'opacity-60' : ''}`}>
                           <td className="px-6 py-4 font-heading font-bold text-white">{ban.player_nickname}</td>
                           <td className="px-6 py-4 font-mono text-xs text-primary">{ban.steamid}</td>
                           <td className="px-6 py-4 text-sm text-foreground">{ban.reason}</td>
                           <td className="px-6 py-4 font-mono text-sm text-muted-foreground">{ban.duration}</td>
                           <td className="px-6 py-4">
+                            <span className={`px-2 py-1 text-xs font-heading uppercase ${
+                              ban.is_expired 
+                                ? 'bg-green-500/20 text-green-500 border border-green-500/50' 
+                                : 'bg-red-500/20 text-red-500 border border-red-500/50'
+                            }`}>
+                              {ban.is_expired ? 'Expired' : 'Active'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
                             <div className="flex space-x-2">
-                              <button onClick={() => handleEditBan(ban)} className="text-primary hover:text-primary/80 p-2">
+                              <button onClick={() => handleEditBan(ban)} className="text-primary hover:text-primary/80 p-2" title="Edit">
                                 <Edit className="w-4 h-4" />
                               </button>
-                              <button onClick={() => handleDeleteBan(ban.id)} className="text-red-500 hover:text-red-400 p-2">
+                              {!ban.is_expired && (
+                                <button 
+                                  onClick={() => handleExpireBan(ban.id)} 
+                                  className="text-yellow-500 hover:text-yellow-400 p-2"
+                                  title="Mark as Expired"
+                                >
+                                  <Clock className="w-4 h-4" />
+                                </button>
+                              )}
+                              <button onClick={() => handleDeleteBan(ban.id)} className="text-red-500 hover:text-red-400 p-2" title="Delete">
                                 <Trash2 className="w-4 h-4" />
                               </button>
                             </div>
