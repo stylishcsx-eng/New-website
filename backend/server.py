@@ -316,6 +316,7 @@ class UserProfileResponse(BaseModel):
     nickname: str
     role: Optional[str] = "player"
     discord_avatar: Optional[str] = None
+    avatar_url: Optional[str] = None
     discord_id: Optional[str] = None
     steamid: Optional[str] = None
     bio: Optional[str] = None
