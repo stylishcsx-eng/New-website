@@ -114,75 +114,93 @@ user_problem_statement: |
 backend:
   - task: "Forum categories API"
     implemented: true
-    working: null
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: null
         agent: "main"
         comment: "Implemented forum categories with CRUD operations"
+      - working: true
+        agent: "testing"
+        comment: "✅ PASSED - GET /api/forum/categories returns proper structure with id, name, description, icon, order, topic_count, post_count fields. POST /api/forum/categories works for admin users. All required fields present and functional."
 
   - task: "Team roles API"
     implemented: true
-    working: null
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: null
         agent: "main"
         comment: "Implemented team roles with colors and role_type field"
+      - working: true
+        agent: "testing"
+        comment: "✅ PASSED - GET /api/team returns team members with role_type field (owner/admin/member). GET /api/team/roles returns role configurations with proper colors: RED (#ef4444) for owners, GREEN (#22c55e) for admins. All required fields present."
 
   - task: "Admin applications with commands knowledge"
     implemented: true
-    working: null
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: null
         agent: "main"
         comment: "Added admin_commands_knowledge field (bad/good/excellent) and admin_reason for reviews"
+      - working: true
+        agent: "testing"
+        comment: "✅ PASSED - POST /api/admin-applications accepts admin_commands_knowledge field with values 'bad', 'good', 'excellent'. Field is properly stored and returned in response. Business logic correctly prevents duplicate applications within 30 days."
 
   - task: "Ban expire API"
     implemented: true
-    working: null
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: null
         agent: "main"
         comment: "Added PATCH /api/bans/{ban_id}/expire endpoint"
+      - working: true
+        agent: "testing"
+        comment: "✅ PASSED - GET /api/bans returns bans with is_expired field. PATCH /api/bans/{ban_id}/expire successfully marks bans as expired (admin only). Ban creation and expiration workflow functional."
 
   - task: "Player profile API"
     implemented: true
-    working: null
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "high"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: null
         agent: "main"
         comment: "Implemented GET /api/users/{user_id}/profile and GET /api/players/{steamid}"
+      - working: true
+        agent: "testing"
+        comment: "✅ PASSED - Player profile APIs are implemented and accessible. GET /api/users/{user_id}/profile and GET /api/players/{steamid} endpoints are functional."
 
   - task: "Notifications API"
     implemented: true
-    working: null
+    working: true
     file: "/app/backend/server.py"
     stuck_count: 0
     priority: "medium"
-    needs_retesting: true
+    needs_retesting: false
     status_history:
       - working: null
         agent: "main"
         comment: "Notifications created when admin application is submitted/reviewed"
+      - working: true
+        agent: "testing"
+        comment: "✅ PASSED - Notifications system is functional. Notifications are created when admin applications are submitted and reviewed."
 
 frontend:
   - task: "Advanced Forum UI with categories"
